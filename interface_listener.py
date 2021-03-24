@@ -111,8 +111,6 @@ class Network_Listener(object):
             self.data_queue.put(e)
             self.data_queue.put(sys.exc_info())
 
-     
-
     def stop(self):
         self._sentinal = False
         self._thread_handle.join()
