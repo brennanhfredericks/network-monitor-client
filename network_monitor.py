@@ -2,6 +2,8 @@ import netifaces
 import argparse
 import collections
 import time
+import signal
+import sys
 
 # services
 from interface_listener import Network_Listener
@@ -104,14 +106,14 @@ def main():
 
     # parse arguments
     args = basic_parser.parse_args()
-
+    service_manager = None
     if args.interface is not None:
         # check validate choice and start process
         service_manager = Service_Manager(args.interface)
         
         service_manager.start()
-        time.sleep(5)
-        service_manager.stop()
+        #time.sleep(5)
+        #service_manager.stop()
 
     else:
 
@@ -123,7 +125,20 @@ def main():
         if args.list_interfaces:
             print(f"interfaces: {netifaces.interfaces()}")
 
+        sys.exit(0)
     # need to block in def, fix ctrl -z issue
+
+    def signal_handler(sig, frame):
+        print('You pressed Ctrl+C! or Ctrl+Z!')
+        service_manager.stop()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTSTP, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    while True:
+            time.sleep(0.1)
+
 
 if __name__ == "__main__":
     exit(main())
