@@ -36,7 +36,7 @@ class InterfaceContextManager(object):
 
             ifr = ifreq()
             # set interface name
-            ifr.ifr_ifrn = interface_name.encode("utf-8")
+            ifr.ifr_ifrn = ifname.encode("utf-8")
             # get active flags for interface
             fcntl.ioctl(sock.fileno(), FLAGS.SIOCGIFFLAGS, ifr)
             # add promiscuous flag
@@ -93,8 +93,11 @@ class Network_Listener(object):
             with InterfaceContextManager(self.ifname) as interface:
                 while self._sentinal:
                     try:
-                        packet, address = interface.recvfrom(BUFFER_SIZE)
-                        print(address)
+                        # packet = bytes, address
+                        packet = interface.recvfrom(self.BUFFER_SIZE)
+                        
+                        self.data_queue.put(packet)
+
                     except Exception as e:
                         # add logging functionality here
                         print("listener receiving data from socket {e}")
