@@ -1,7 +1,7 @@
 
 # TODO
 
-    - use queues to pass information between threads
+    
 
 # Implemented
 ## Command Line
@@ -11,7 +11,8 @@
       - specify interface to monitor (-i, --interfaces) with interface name
 ## Service Manager
     - service_manager to start and stop threads and provide listening interface info
-      - add methods to retrieve the interface addresses info, to be used as a unique identifier 
+      - add methods to retrieve the interface addresses info, to be used as a unique identifier
+      - could use sub classing for service trait, add error handling for service starting and stopping
 
 ## Network Listener Serivce
     - Ethernet port listener

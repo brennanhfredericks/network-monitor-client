@@ -1,11 +1,17 @@
 import netifaces
 import argparse
 import collections
+import time
 
-class Service_Manager:
+# services
+from interface_listener import Network_Listener
+
+
+class Service_Manager(object):
     def __init__(self, interface_name):
+        self._ifname = interface_name
         self._ifaddress = netifaces.ifaddresses(interface_name)
-        self._service = collections.OrderedDict()
+        self._services = collections.OrderedDict()
 
     @property
     def interface_addresses(self):
@@ -40,17 +46,33 @@ class Service_Manager:
         return None
     def start(self):
         # use to start service in the correct order
-        pass
+        
+        # network listining service
+        network_listener = Network_Listener(self._ifname)
+
+        self._start_service("network listener",network_listener)
 
     def stop (self):
         # use to stop service in the correct order
         # need to stop service using signal, check to handle exit case correctly
-        pass
-    def _add_service(self):
-        pass
+        
+        self._stop_all_services()
 
-    def _stop_service(self):
-        pass
+    def _start_service(self,service_name:str,service_obj):
+        # start service
+        service_obj.start()
+        
+        # add service to Order dict
+        self._services[service_name] = service_obj
+
+    def _stop_all_services(self):
+        
+        for k,v in self._services.items():
+            #stop service and join thread
+            v.stop()
+            print(f"{k} service stopped")
+
+        self._services.clear()
 
 def main():
 
@@ -86,11 +108,11 @@ def main():
     if args.interface is not None:
         # check validate choice and start process
         service_manager = Service_Manager(args.interface)
-        print(service_manager.interface_addresses)
-        print(service_manager.address_family)
-        print(service_manager.ipv4_address)
-        print(service_manager.ipv6_address)
-        print(service_manager.link_layer_address)
+        
+        service_manager.start()
+        time.sleep(5)
+        service_manager.stop()
+
     else:
 
         if args.list_gateways:
@@ -101,6 +123,7 @@ def main():
         if args.list_interfaces:
             print(f"interfaces: {netifaces.interfaces()}")
 
+    # need to block in def, fix ctrl -z issue
 
 if __name__ == "__main__":
     exit(main())

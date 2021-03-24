@@ -1,13 +1,15 @@
 import ctypes
 import socket
 import os
+import threading
+import time
 
 # used to manipulate file descriptor for unix
 class ifreq(ctypes.Structure):
     _fields_ = [("ifr_ifrn", ctypes.c_char * 16), ("ifr_flags", ctypes.c_short)]
 
 
-class FLAGS:
+class FLAGS(object):
     # linux/if_ether.h
     ETH_P_ALL = 0x0003  # all protocols
     ETH_P_IP = 0x0800  # IP only
@@ -17,12 +19,12 @@ class FLAGS:
     SIOCGIFFLAGS = 0x8913  # get the active flags
     SIOCSIFFLAGS = 0x8914  # set the active flags
 
-class InterfaceContextManager():
+class InterfaceContextManager(object):
 
     def __init__(self,interface_name):
 
         # linux os
-        if os.name = 'posix':
+        if os.name == 'posix':
             import fcntl # posix-only, use to manipulate file describtor
             
             # htons: converts 16-bit positive integers from host to network byte order
@@ -41,7 +43,7 @@ class InterfaceContextManager():
             # keep a copy of flags state inorder to restore when done
             self._ifr = ifr
         # windows os
-        elif os.name = 'nt':
+        elif os.name == 'nt':
             # test to see if working
             self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
             #raise ValueError(f"low level interface for Windows operating system not implemented yet")
@@ -69,4 +71,30 @@ class InterfaceContextManager():
             self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
 
 
+class Network_Listener(object):
+    # maximum ethernet frame size is 1522 bytes
+    BUFFER_SIZE = 2000
+
+    def __init__(self,ifname:str):
+        # used to initialize required things
+
+        # sentinal value to exit thread loop
+        pass
+        
+    def _listen (self):
+        while self._sentinal:
+            time.sleep(0.1)
+
+        print("loop stopped")
+
+    def stop (self):
+        self._sentinal = False
+        self._thread_handle.join()
+        
+
+    def start (self):
+        self._sentinal = True
+        self._thread_handle = threading.Thread(target=self._listen,name="network listener",daemon=False)
+        self._thread_handle.start()
+        
         
