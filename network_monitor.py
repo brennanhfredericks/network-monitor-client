@@ -4,6 +4,7 @@ import collections
 import time
 import signal
 import sys
+import queue
 
 # services
 from interface_listener import Network_Listener
@@ -50,7 +51,10 @@ class Service_Manager(object):
         # use to start service in the correct order
         
         # network listining service
-        network_listener = Network_Listener(self._ifname)
+        self._raw_packet_queue = queue.Queue()
+        network_listener = Network_Listener(self._ifname,self._raw_packet_queue)
+
+
 
         self._start_service("network listener",network_listener)
 
@@ -62,7 +66,21 @@ class Service_Manager(object):
 
     def _start_service(self,service_name:str,service_obj):
         # start service
+        
         service_obj.start()
+
+        time.sleep(0.1)
+        
+        if service_obj.data_queue.qsize() == 2:
+            item =  service_obj.data_queue.get()
+            if isinstance(item,Exception):
+                (type_, value, traceback) = service_obj.data_queue.get()
+                print(f"Error starting {service_name} service: {item}")
+
+
+
+                self._stop_all_services()
+                sys.exit(0)
         
         # add service to Order dict
         self._services[service_name] = service_obj
@@ -112,8 +130,7 @@ def main():
         service_manager = Service_Manager(args.interface)
         
         service_manager.start()
-        #time.sleep(5)
-        #service_manager.stop()
+
 
     else:
 
@@ -126,19 +143,18 @@ def main():
             print(f"interfaces: {netifaces.interfaces()}")
 
         sys.exit(0)
-    # need to block in def, fix ctrl -z issue
-
+    
+    # exit cleanly
     def signal_handler(sig, frame):
-        print('You pressed Ctrl+C! or Ctrl+Z!')
         service_manager.stop()
         sys.exit(0)
 
     signal.signal(signal.SIGTSTP, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
-    
+
+    # blocking loop
     while True:
             time.sleep(0.1)
-
 
 if __name__ == "__main__":
     exit(main())
