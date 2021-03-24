@@ -4,10 +4,13 @@
     - use queues to pass information between threads
 
 # Implemented
-    - basic command line interface implemented with the following argument options
+    - basic command line interface to start the network-monitor with the following argument options
       - list all interfaces (-li, --list-interfaces)
       - list all gateways (-lg, --list-gateways)
       - specify interface to monitor (-i, --interfaces) with interface name
+    
+    - service_manager to start and stop threads and provide listening interface info
+      - add methods to retrieve the interface addresses info, to be used as a unique identifier 
 
 # Possible Additional Features
 ## Starting Commandline Options

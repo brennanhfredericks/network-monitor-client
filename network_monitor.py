@@ -1,10 +1,11 @@
 import netifaces
 import argparse
-
+import collections
 
 class Service_Manager:
     def __init__(self, interface_name):
         self._ifaddress = netifaces.ifaddresses(interface_name)
+        self._service = collections.OrderedDict()
 
     @property
     def interface_addresses(self):
@@ -37,6 +38,19 @@ class Service_Manager:
             return self._ifaddress[netifaces.AF_LINK]
 
         return None
+    def start(self):
+        # use to start service in the correct order
+        pass
+
+    def stop (self):
+        # use to stop service in the correct order
+        # need to stop service using signal, check to handle exit case correctly
+        pass
+    def _add_service(self):
+        pass
+
+    def _stop_service(self):
+        pass
 
 def main():
 
