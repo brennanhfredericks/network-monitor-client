@@ -8,7 +8,7 @@ import queue
 
 # services
 from interface_listener import Network_Listener
-
+from packet_parser import Packet_Parser
 
 class Service_Manager(object):
     def __init__(self, interface_name):
@@ -51,10 +51,15 @@ class Service_Manager(object):
         # use to start service in the correct order
         
         # network listining service
-        self._raw_packet_queue = queue.Queue()
-        network_listener = Network_Listener(self._ifname,self._raw_packet_queue)
-
+        self._input_queue = queue.Queue()
+        self._ouput_queue = queue.Queue()
+        network_listener = Network_Listener(self._ifname,self._input_queue)
         self._start_service("network listener",network_listener)
+
+        packet_parser = Packet_Parser(self._input_queue)
+
+        self._start_service("packet parser",packet_parser)
+        
 
     def stop (self):
         # use to stop service in the correct order
