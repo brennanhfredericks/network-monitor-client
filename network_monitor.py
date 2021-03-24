@@ -54,8 +54,6 @@ class Service_Manager(object):
         self._raw_packet_queue = queue.Queue()
         network_listener = Network_Listener(self._ifname,self._raw_packet_queue)
 
-
-
         self._start_service("network listener",network_listener)
 
     def stop (self):
@@ -76,8 +74,6 @@ class Service_Manager(object):
             if isinstance(item,Exception):
                 (type_, value, traceback) = service_obj.data_queue.get()
                 print(f"Error starting {service_name} service: {item}")
-
-
 
                 self._stop_all_services()
                 sys.exit(0)
@@ -128,12 +124,9 @@ def main():
     if args.interface is not None:
         # check validate choice and start process
         service_manager = Service_Manager(args.interface)
-        
         service_manager.start()
 
-
     else:
-
         if args.list_gateways:
             print("gateways: ")
             for k, v in netifaces.gateways().items():
