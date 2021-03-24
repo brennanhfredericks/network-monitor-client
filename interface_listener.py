@@ -63,7 +63,7 @@ class InterfaceContextManager(object):
     def __enter__(self):
         return self._llsocket
 
-    def __exit__(self):
+    def __exit__(self,*exc):
         # linux
         if os.name == "posix":
             import fcntl
