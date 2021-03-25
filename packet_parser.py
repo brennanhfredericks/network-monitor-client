@@ -4,6 +4,7 @@ import threading
 import socket
 import binascii
 import struct
+import sys
 
 from dataclasses import dataclass
 
@@ -152,7 +153,9 @@ class TCP(object):
 
         self.data_offset = __d_offset_flags[0] >> 4
         self.reserved = (__d_offset_flags[0] & 14) >> 1
-        self.flags = __d_offset_flags & 511
+        self.flags = (
+            int.from_bytes(__d_offset_flags, sys.byteorder) & 511
+        )  # added ability to index for specific flags
 
         self.window_size = __win_size
         self.checksum = __chk_sum
@@ -164,8 +167,33 @@ class TCP(object):
             # implement extractor
             pass
         else:
-            # payload data probabily encrypte
+            # payload data probabily encrypted
             self._payload = raw_bytes[20:]
+
+
+@dataclass
+class UDP(object):
+
+    description = "User Datagram Protocol"
+    source_port: int
+    destination_port: int
+    length: int
+    checksum: int
+
+    def __init__(self, raw_bytes):
+
+        __src_prt, __des_prt, __leng, __chk_sum = struct.unpack(
+            "! H H H H", raw_bytes[:8]
+        )
+
+        self.source_port = __src_prt
+        self.destination_port = __des_prt
+        self.length = __leng
+        self.checksum = __chk_sum
+
+        # payload data probabily encrypted
+        # should be based on length field, This field specifies the length in bytes of the UDP header and UDP data.
+        self._payload = raw_bytes[8:]
 
 
 class IPv4_Protocols(object):
@@ -175,6 +203,7 @@ class IPv4_Protocols(object):
         1: ICMP,
         2: IGMP,
         6: TCP,
+        17: UDP,
         58: ICMPv6,
     }
 

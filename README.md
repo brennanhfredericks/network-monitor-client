@@ -22,8 +22,10 @@
     - TCP outstanding functionality
       - implement checksum to compare values
       - implement parser for options part
+    - UDP outstanding functionality 
+      - implement checksum to compare values
+      - payload should be determined based length field value
       
-    
 # Implemented
 
   - Network Listerner
@@ -40,6 +42,7 @@
       - ipv4 protocols
         - 1: Internet Control Message Protocol (ICMP)
         - 2: Internet Group Message Protocol (IGMP)
+        - 6: Transmission Control Protocol (TCP)
         - 58: Internet Control Message Protocol for IPv6 (ICMPv6)
 
 ## Command Line
