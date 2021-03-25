@@ -63,7 +63,7 @@ class InterfaceContextManager(object):
     def __enter__(self):
         return self._llsocket
 
-    def __exit__(self,*exc):
+    def __exit__(self, *exc):
         # linux
         if os.name == "posix":
             import fcntl
@@ -95,7 +95,7 @@ class Network_Listener(object):
                     try:
                         # packet = bytes, address
                         packet = interface.recvfrom(self.BUFFER_SIZE)
-                        
+
                         self.data_queue.put(packet)
 
                     except Exception as e:
@@ -105,7 +105,7 @@ class Network_Listener(object):
                         print(tb)
 
                     time.sleep(0.1)
-                
+
             print("loop stopped")
         except Exception as e:
             self.data_queue.put(e)
