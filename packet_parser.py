@@ -3,6 +3,8 @@ import time
 import threading
 import socket
 import binascii
+import struct
+
 from dataclasses import dataclass
 
 
@@ -27,7 +29,7 @@ PKTTYPE_LOOKUP ={
 }
 
 @dataclass
-class AF_Packet:
+class AF_Packet(object):
     """ Class for parsing low level packets"""
     ifname: str
     proto: int
@@ -43,15 +45,43 @@ class AF_Packet:
         self.hatype = address[3]
         self.hwaddr = get_mac_addr(address[4])
         
+@dataclass
+class Packet_802_3(object):
+    
+    dest_MAC: str
+    src_MAC:str
+    ether_type:int
+
+    def __init__(self,raw_bytes):
+        __des_addr,__src_addr,__tp = struct.unpack('! 6s 6s H',raw_bytes[:14])
+        self.dest_MAC = get_mac_addr(__des_addr)
+        self.src_MAC = get_mac_addr(__src_addr)
+        self.ether_type = __tp
+
+        self.__parser_upper_layer_protocol(raw_bytes[14:])
+        
+
+
+    def __parser_upper_layer_protocol(self,remaining_raw_bytes):
+        
+        if self.ether_type >= 0 and self.ether_type <= 1500:
+            # logical link control (LLC) Numbers
+
+            self._encap = Packet_802_2(self.ether_type,remaining_raw_bytes)
+        
+
+    
+@dataclass
+class Packet_802_2(object):
+    
+    def __init__(self,ether_type,raw_bytes):
+        ...
 
 class Packet_Parser(object):
     """ Class for processing bytes packets"""
     def __init__(self, data_queue: queue.Queue, output_queue: queue.Queue = None):
 
         self.data_queue = data_queue
-
-    def _packet_info(self):
-        pass
 
     def _parser(self):
         
@@ -60,8 +90,12 @@ class Packet_Parser(object):
 
             if not self.data_queue.empty():
                 raw_bytes, address = self.data_queue.get()
-                print(AF_Packet(address))
+                
                 # do processing with data
+                print(f"AF Packet: {AF_Packet(address).proto}")
+
+                # check whether WIFI packets are different from ethernet packets
+                print(f"802_3 Packet: {Packet_802_3(raw_bytes)}")
             else:
                 # sleep for 100ms
                 time.sleep(0.1)
