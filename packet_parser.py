@@ -53,12 +53,15 @@ class AF_Packet(object):
         self.hatype = address[3]
         self.hwaddr = get_mac_addr(address[4])
 
+
 class IPv4_Protocols(object):
     """wrapper for the different ipv4 protocols parsers"""
 
-    PROTOCOL_LOOKUP = {
-        
-    }
+    PROTOCOL_LOOKUP = {}
+
+    def __init__(self, protocol, raw_bytes):
+        ...
+
 
 @dataclass
 class IPv4(object):
@@ -117,8 +120,6 @@ class IPv4(object):
             pass
         else:
             self.__parser_upper_layer_protocol(raw_bytes[20:])
-        
-
 
     def _options(self, remaining_raw_bytes):
         """ used to parser Options flield """
@@ -128,8 +129,8 @@ class IPv4(object):
         print(f"Options field size: {len(remaining_raw_bytes)}")
 
     def __parser_upper_layer_protocol(self, remaining_raw_bytes):
-        
 
+        self._encap = IPv4_Protocols(self.protocol, remaining_raw_bytes)
 
 
 @dataclass
@@ -155,11 +156,12 @@ class Ethertype(object):
     def __init__(self, ethertype, raw_bytes):
 
         try:
-            self.encap = self.ETHERTYPE_LOOKUP[ethertype](raw_bytes)
+            self._encap = self.ETHERTYPE_LOOKUP[ethertype](raw_bytes)
+            print(self._encap)
         except KeyError:
             # parser not implemented
             # add logging functionality here
-            self.encap = Unknown(f"Parser for Ethertype {ethertype} not implemented")
+            self._encap = Unknown(f"Parser for Ethertype {ethertype} not implemented")
 
         # would any other exception occur?
 
@@ -184,6 +186,8 @@ class Packet_802_3(object):
         if self.ethertype >= 0 and self.ethertype <= 1500:
             # logical link control (LLC) Numbers
             self._encap = Packet_802_2(self.ethertype, remaining_raw_bytes)
+        else:
+            self._encap = Ethertype(self.ethertype, remaining_raw_bytes)
 
 
 @dataclass
@@ -240,9 +244,9 @@ class Packet_Parser(object):
 
                 # do processing with data
                 af_packet = AF_Packet(address)
-                print(
-                    f"AF Packet - proto: {af_packet.proto}, pkttype: {af_packet.pkttype}"
-                )
+                # print(
+                #     f"AF Packet - proto: {af_packet.proto}, pkttype: {af_packet.pkttype}"
+                # )
 
                 # check whether WIFI packets are different from ethernet packets
                 out_packet = Packet_802_3(raw_bytes)
