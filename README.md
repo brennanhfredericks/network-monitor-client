@@ -1,14 +1,12 @@
 
 # TODO
+
     - add logging
     - 802.2 Packet
       - need to investigate IEEE 802.2 packet upper layer data and parser it out if possible. confirm parsing
     - IPv4 outstanding functionality:
       - implement header checksum comparison
       - implement options field extraction when IHL is bigger than 5
-    - ARP outstanding functionality
-      - sender protocol address should be decode based on requested protocol. should not assume it will always be IPv4
-        The permitted PTYPE values share a numbering space with those for EtherType. 
     
 # Implemented
 
@@ -20,6 +18,7 @@
     - 802.3 packet
       - (ethertype between 0 and 1500) encapsulation of 802.2 Packet. could be wrong need to confirm
       - (ethertype 2048) Internet Protocol version 4 (IPv4)
+      - (ethertype 2054) Address Resolution Protocol (ARP)
 
 ## Command Line
     - basic command line interface to start the network-monitor with the following argument options

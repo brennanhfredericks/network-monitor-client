@@ -166,11 +166,22 @@ class ARP(object):
         self.PLEN = __plen
         self.operation = __op_code
         self.SHA = get_mac_addr(__sender_hw_addr)
-        # shoud decode base on protocol requested
-        self.SPA = get_ipv4_addr(__sender_proto_addr)
+        self.SPA = self._decode_protocol_addr(__sender_proto_addr)
         self.THA = get_mac_addr(__target_hw_addr)
-        # shoud decode base on protocol requested
-        self.TPA = get_ipv4_addr(__target_proto_addr)
+        self.TPA = self._decode_protocol_addr(__target_proto_addr)
+
+    def _decode_protocol_addr(self, proto_addr):
+
+        if self.PTYPE == 2048:
+            return get_ipv4_addr(proto_addr)
+        elif self.PTYPE == 34525:
+            return get_ipv6_addr(proto_addr)
+        else:
+            # add logging functionality here
+            print(
+                f" address ARP decoding not implemented for {self.PTYPE}, address {proto_addr}"
+            )
+            return str(proto_addr)
 
 
 @dataclass
