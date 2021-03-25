@@ -53,27 +53,137 @@ class AF_Packet(object):
         self.hatype = address[3]
         self.hwaddr = get_mac_addr(address[4])
 
+class IPv4_Protocols(object):
+    """wrapper for the different ipv4 protocols parsers"""
+
+    PROTOCOL_LOOKUP = {
+        
+    }
+
+@dataclass
+class IPv4(object):
+    description = "Internet Protocol Version 4"
+    version: int
+    IHL: int
+    DSCP: int
+    ECN: int
+    total_length: int
+    identification: int
+    flags = int
+    fragment_offset: int
+    TTL: int
+    protocol: int
+    header_checksum: int
+    source_address: str
+    destination_address: str
+    options: int = 0
+
+    def __init__(self, raw_bytes):
+
+        (
+            __vihl,
+            __dsen,
+            __tl,
+            __ident,
+            __ff,
+            __ttl,
+            __proto,
+            __hck,
+            __src,
+            __des,
+        ) = struct.unpack("! B B H H H B B H 4s 4s", raw_bytes[:20])
+
+        __flags = __ff & 57344 >> 13
+        self.version = __vihl >> 4
+
+        self.IHL = __vihl & 15
+        self.DSCP = (__dsen & 252) >> 2
+        self.ECN = __dsen & 3
+        self.total_length = __tl
+        self.identification = __ident
+
+        self.flags = __flags
+        self.fragment_offset = __ff & 8191
+        self.TTL = __ttl
+        self.protocol = __proto
+        self.header_checksum = __hck
+        self.source_address = get_ipv4_addr(__src)
+        self.destination_address = get_ipv4_addr(__des)
+
+        # Note: If the header length is greater than 5 (i.e., it is from 6 to 15)
+        # it means that the options field is present and must be considered.
+        if self.IHL > 5:
+            # raw bytes contains Option field data
+            pass
+        else:
+            self.__parser_upper_layer_protocol(raw_bytes[20:])
+        
+
+
+    def _options(self, remaining_raw_bytes):
+        """ used to parser Options flield """
+        # Note: Copied, Option Class, and Option Number are sometimes referred to as a single eight-bit field, the Option Type.
+
+        # The packet payload is not included in the checksum
+        print(f"Options field size: {len(remaining_raw_bytes)}")
+
+    def __parser_upper_layer_protocol(self, remaining_raw_bytes):
+        
+
+
+
+@dataclass
+class Unknown(object):
+    description = "Unknown Protocol"
+    message: str
+
+
+class Ethertype(object):
+    """wrapper for the different ethertype parsers
+
+    parser implemented:
+        - IPv4
+        - ARP
+        - IPv6
+        - CDP
+    """
+
+    ETHERTYPE_LOOKUP = {
+        2048: IPv4,
+    }
+
+    def __init__(self, ethertype, raw_bytes):
+
+        try:
+            self.encap = self.ETHERTYPE_LOOKUP[ethertype](raw_bytes)
+        except KeyError:
+            # parser not implemented
+            # add logging functionality here
+            self.encap = Unknown(f"Parser for Ethertype {ethertype} not implemented")
+
+        # would any other exception occur?
+
 
 @dataclass
 class Packet_802_3(object):
     description = "Ethernet 802.3 Packet"
     dest_MAC: str
     src_MAC: str
-    ether_type: int
+    ethertype: int
 
     def __init__(self, raw_bytes):
         __des_addr, __src_addr, __tp = struct.unpack("! 6s 6s H", raw_bytes[:14])
         self.dest_MAC = get_mac_addr(__des_addr)
         self.src_MAC = get_mac_addr(__src_addr)
-        self.ether_type = __tp
+        self.ethertype = __tp
 
         self.__parser_upper_layer_protocol(raw_bytes[14:])
 
     def __parser_upper_layer_protocol(self, remaining_raw_bytes):
 
-        if self.ether_type >= 0 and self.ether_type <= 1500:
+        if self.ethertype >= 0 and self.ethertype <= 1500:
             # logical link control (LLC) Numbers
-            self._encap = Packet_802_2(self.ether_type, remaining_raw_bytes)
+            self._encap = Packet_802_2(self.ethertype, remaining_raw_bytes)
 
 
 @dataclass
@@ -135,7 +245,9 @@ class Packet_Parser(object):
                 )
 
                 # check whether WIFI packets are different from ethernet packets
-                print(f"802_3 Packet: {Packet_802_3(raw_bytes)}")
+                out_packet = Packet_802_3(raw_bytes)
+                print(f"802_3 Packet: {out_packet}")
+
             else:
                 # sleep for 100ms
                 time.sleep(0.1)

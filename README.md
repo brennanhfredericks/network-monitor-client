@@ -5,6 +5,15 @@
     
 # Implemented
 
+  - Network Listerner
+    - functionality listen on a single ethernet interface
+  
+  - Packet Parser
+    - ethernet interface origin
+    - 802.3 packet
+      - (ethertype between 0 and 1500) encapsulation of 802.2 Packet. could be wrong need to confirm
+      - (ethertype 2048) Internet Protocol version 4 (IPv4)
+
 ## Command Line
     - basic command line interface to start the network-monitor with the following argument options
       - list all interfaces (-li, --list-interfaces)
