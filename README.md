@@ -10,6 +10,9 @@
     - IPv6 outstanding functionality:
       - implement DS field and ECN field extraction from Traffic_Class
       - implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol
+    - ICMP
+      - implement checksum to compare values
+      - implement parser to decode different control message,
     
 # Implemented
 

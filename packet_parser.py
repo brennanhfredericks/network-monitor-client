@@ -54,12 +54,34 @@ class AF_Packet(object):
         self.hwaddr = get_mac_addr(address[4])
 
 
+@dataclass
+class ICMP(object):
+
+    description = "Internet Control Message Protocol"
+
+    type_: int
+    code: int
+    checksum: int
+    message: int
+
+    def __init__(self, raw_bytes):
+
+        __tp, __cd, __chk, __msg = struct.unpack("! B B 2s 4s", raw_bytes[:8])
+        self.type_ = __tp
+        self.code = __cd
+        self.checksum = __chk
+
+        # implement parser to decode control messages
+        self.message = __msg
+
+
 class IPv4_Protocols(object):
     """wrapper for the different ipv4 protocols parsers"""
 
     PROTOCOL_LOOKUP = {}
 
     def __init__(self, protocol, raw_bytes):
+
         ...
 
 
