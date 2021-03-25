@@ -36,6 +36,12 @@ PKTTYPE_LOOKUP = {
 
 
 @dataclass
+class Unknown(object):
+    description = "Unknown Protocol"
+    message: str
+
+
+@dataclass
 class AF_Packet(object):
     """ Class for parsing low level packets"""
 
@@ -58,15 +64,14 @@ class AF_Packet(object):
 class ICMP(object):
 
     description = "Internet Control Message Protocol"
-
     type_: int
     code: int
     checksum: int
-    message: int
+    message: bytes
 
     def __init__(self, raw_bytes):
 
-        __tp, __cd, __chk, __msg = struct.unpack("! B B 2s 4s", raw_bytes[:8])
+        __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
         self.type_ = __tp
         self.code = __cd
         self.checksum = __chk
@@ -75,14 +80,62 @@ class ICMP(object):
         self.message = __msg
 
 
+@dataclass
+class ICMPv6(object):
+    description = "Internet Control Message Protocol for IPv6"
+    type_: int
+    code: int
+    checksum: int
+    message: bytes
+
+    def __init__(self, raw_bytes):
+        __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
+        self.type = __tp
+        self.code = __cd
+        self.checksum = __chk.decode("latin-1")
+        self.message = __msg.decode("latin-1")
+
+
+@dataclass
+class IGMP(object):
+    description = "Internet Group Management Protocol"
+    type_: int
+    max_resp_time: int
+    checksum: int
+    group_address: str
+
+    def __init__(self, raw_bytes):
+        __tp, __mrt, __chk, __ga = struct.unpack("! B B H 4s", raw_bytes[:8])
+
+        self.type_ = __tp
+        self.max_resp_time = __mrt
+        self.checksum = __chk
+        self.group_address = get_ipv4_addr(__ga)
+
+        # need to implement parser for message types
+
+
 class IPv4_Protocols(object):
     """wrapper for the different ipv4 protocols parsers"""
 
-    PROTOCOL_LOOKUP = {}
+    PROTOCOL_LOOKUP = {
+        1: ICMP,
+        2: IGMP,
+        58: ICMPv6,
+    }
 
     def __init__(self, protocol, raw_bytes):
 
-        ...
+        try:
+            self._encap = self.PROTOCOL_LOOKUP[protocol](raw_bytes)
+            print(self._encap)
+        except KeyError:
+            # would any other exception occur?
+            # add loggin functionality here
+            self._encap = Unknown(
+                f"Parser for IPv4 protocal {protocol} not implemented"
+            )
+            print(f"Parser for IPv4 protocal {protocol} not implemented")
 
 
 @dataclass
@@ -311,12 +364,6 @@ class IPv6(object):
         self._encap = IPv4_Protocols(protocol, remaining_raw_bytes)
 
 
-@dataclass
-class Unknown(object):
-    description = "Unknown Protocol"
-    message: str
-
-
 class Ethertype(object):
     """wrapper for the different ethertype parsers
 
@@ -341,7 +388,9 @@ class Ethertype(object):
         except KeyError:
             # parser not implemented
             # add logging functionality here
+
             self._encap = Unknown(f"Parser for Ethertype {ethertype} not implemented")
+            print(f"Parser for Ethertype {ethertype} not implemented")
 
         # would any other exception occur?
 
