@@ -1,7 +1,7 @@
 
 # TODO
     - add logging
-    - 
+    - need to investigate IEEE 802.2 packet upper layer data and parser it out if possible
     
 # Implemented
 
@@ -33,5 +33,6 @@
 # For consideration 
     - use interface addresses as identifier when posting data to server
     - could use sub classing for service trait
+    - need to investigate unpacking 802.2 packet, might be wrong, check commet at code
 
 
