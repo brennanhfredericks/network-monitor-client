@@ -19,7 +19,10 @@
     - IGMP outstanding functionality
       - implement checksum to compare values
       - implement parser for message types
-       
+    - TCP outstanding functionality
+      - implement checksum to compare values
+      - implement parser for options part
+      
     
 # Implemented
 
