@@ -134,6 +134,46 @@ class IPv4(object):
 
 
 @dataclass
+class ARP(object):
+    description = "Address Resolution Protocol"
+
+    HTYPE: int
+    PTYPE: int
+    HLEN: int
+    PLEN: int
+    operation: int
+    SHA: str
+    SPA: str
+    THA: str
+    TPA: str
+
+    def __init__(self, raw_bytes):
+        (
+            __hardware_type,
+            __protocol_type,
+            __hlen,
+            __plen,
+            __op_code,
+            __sender_hw_addr,
+            __sender_proto_addr,
+            __target_hw_addr,
+            __target_proto_addr,
+        ) = struct.unpack("! H H B B H 6s 4s 6s 4s", raw_bytes[:28])
+
+        self.HTYPE = __hardware_type
+        self.PTYPE = __protocol_type
+        self.HLEN = __hlen
+        self.PLEN = __plen
+        self.operation = __op_code
+        self.SHA = get_mac_addr(__sender_hw_addr)
+        # shoud decode base on protocol requested
+        self.SPA = get_ipv4_addr(__sender_proto_addr)
+        self.THA = get_mac_addr(__target_hw_addr)
+        # shoud decode base on protocol requested
+        self.TPA = get_ipv4_addr(__target_proto_addr)
+
+
+@dataclass
 class Unknown(object):
     description = "Unknown Protocol"
     message: str
@@ -250,7 +290,7 @@ class Packet_Parser(object):
 
                 # check whether WIFI packets are different from ethernet packets
                 out_packet = Packet_802_3(raw_bytes)
-                print(f"802_3 Packet: {out_packet}")
+                # print(f"802_3 Packet: {out_packet}")
 
             else:
                 # sleep for 100ms

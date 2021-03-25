@@ -6,6 +6,9 @@
     - IPv4 outstanding functionality:
       - implement header checksum comparison
       - implement options field extraction when IHL is bigger than 5
+    - ARP outstanding functionality
+      - sender protocol address should be decode based on requested protocol. should not assume it will always be IPv4
+        The permitted PTYPE values share a numbering space with those for EtherType. 
     
 # Implemented
 
