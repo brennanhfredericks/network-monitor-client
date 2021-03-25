@@ -7,6 +7,9 @@
     - IPv4 outstanding functionality:
       - implement header checksum comparison
       - implement options field extraction when IHL is bigger than 5
+    - IPv6 outstanding functionality:
+      - implement DS field and ECN field extraction from Traffic_Class
+      - implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol
     
 # Implemented
 
@@ -51,5 +54,6 @@
     - need to investigate unpacking 802.2 packet, might be wrong, check commet at code
 
     - could implement protocols and register them (in a dictionary for lookup), would then avoid the need manually specify protocol look up tables and easily expandable
+    - could implement application as module that is also calllable using the "-m" argument for python
 
 

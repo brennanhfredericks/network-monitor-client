@@ -184,6 +184,111 @@ class ARP(object):
             return str(proto_addr)
 
 
+class IPv6_Ext_Headers(object):
+    """ wrapper for the different ipv6 extension headers """
+
+    # hack need specify callable objects
+    EXT_HEADER_LOOKUP = {
+        0: "Hop by Hop_Options",
+        43: "Routing",
+        44: "Fragment",
+        50: "Encapsulating Security Payload (ESP)",
+        51: "Authentication Header (AH)",
+        59: "No Next Header - inspect payload",
+        60: "Destination Options",
+        135: "Mobility",
+        139: "Host Identity Protocol",
+        140: "Shim6 Protocol",
+        253: "Reserved",
+        254: "Reserved",
+    }
+
+    def __init__(self):
+        self._headers = []
+
+    def parse_extension_headers(self, next_header, raw_bytes):
+        # When extension headers are present in the packet this field indicates which extension header follows.
+        # The values are shared with those used for the IPv4 protocol field, as both fields have the same function
+        # If a node does not recognize a specific extension header, it should discard the packet and send a Parameter Problem message (ICMPv6 type 4, code 1).
+        # Value 59 (No Next Header) in the Next Header field indicates that there is no next header whatsoever following this one, not even a header of an upper-layer protocol. It means that, from the header's point of view, the IPv6 packet ends right after it: the payload should be empty.[1] There could, however, still be data in the payload if the payload length in the first header of the packet is greater than the length of all extension headers in the packet. This data should be ignored by hosts, but passed unaltered by routers.
+
+        def parse_header(remaining_raw_bytes):
+            __next_header, __ext_header_len = struct.unpack(
+                "! B B", remaining_raw_bytes[:2]
+            )
+
+            return (
+                __next_header,
+                remaining_raw_bytes[:__ext_header_len],
+                remaining_raw_bytes[__ext_header_len:],
+            )
+
+        if next_header not in self.EXT_HEADER_LOOKUP.keys():
+            # upper-layer protocol
+            return self._headers, next_header, raw_bytes
+        else:
+            # for clarity
+            r_raw_bytes = raw_bytes
+            ext_header = next_header
+
+            # extract extion until upper layer protocol is reached
+            while ext_header in self.EXT_HEADER_LOOKUP.keys():
+                # should parse header to append id and data
+                new_ext_header, ext_header_data, r_raw_bytes = parse_header(r_raw_bytes)
+
+                # need to implement Extion headers parsers to decode headers
+                self._headers.append((ext_header, ext_header_data))
+                ext_header = new_ext_header
+
+            return self._headers, ext_header, r_raw_bytes
+
+
+@dataclass
+class IPv6(object):
+
+    description = "Internet Protocol Version 6"
+    version: int
+    traffic_class: int
+    flow_label: int
+    payload_length: int
+    next_header: int
+    hop_limit: int
+    source_address: str
+    destination_address: str
+    ext_headers: list
+
+    def __init__(self, raw_bytes):
+        __vtf, __pl_len, __next_h, __hop_l, __src_addr, __des_addr = struct.unpack(
+            "! 4s H B B 16s 16s", raw_bytes[:40]
+        )
+
+        # parse fixed header
+
+        # index first byte
+        self.version = __vtf[0] >> 4
+        self.traffic_class = (int.from_bytes(__vtf[:2], sys.byteorder) & 2040) >> 4
+        self.flow_label = int.from_bytes(__vtf[1:4], sys.byteorder) & 1048575
+        self.payload_length = __pl_len
+        self.next_header = __next_h
+        self.hop_limit = __hop_l
+        self.source_address = get_ipv6_addr(__src_addr)
+        self.destination_address = get_ipv6_addr(__des_addr)
+
+        # parse extension headers
+        (
+            self.ext_headers,
+            protocol,
+            remaining_raw_bytes,
+        ) = IPv6_Ext_Headers().parse_extension_headers(self.next_header, raw_bytes[40:])
+
+        # parse upper layer protocol
+        self.__parser_upper_layer_protocol(protocol, remaining_raw_bytes)
+
+    def __parser_upper_layer_protocol(self, protocol, remaining_raw_bytes):
+        # The values are shared with those used for the IPv4 protocol field
+        self._encap = IPv4_Protocols(protocol, remaining_raw_bytes)
+
+
 @dataclass
 class Unknown(object):
     description = "Unknown Protocol"
@@ -202,6 +307,8 @@ class Ethertype(object):
 
     ETHERTYPE_LOOKUP = {
         2048: IPv4,
+        2054: ARP,
+        34525: IPv6,
     }
 
     def __init__(self, ethertype, raw_bytes):
