@@ -2,7 +2,7 @@ import socket
 import struct
 from dataclasses import dataclass
 from .protocol_utils import get_mac_addr
-from .internet_layer import Ethertype
+from .parsers import Ethernet_Types
 
 PKTTYPE_LOOKUP = {
     socket.PACKET_BROADCAST: "PACKET_BROADCAST",
@@ -46,11 +46,11 @@ class Packet_802_3(object):
         self.src_MAC = get_mac_addr(__src_addr)
         self.ethertype = __tp
 
-        self.__parser_upper_layer_protocol(raw_bytes[14:])
+        self.__parse_upper_layer_protocol(raw_bytes[14:])
 
-    def __parser_upper_layer_protocol(self, remaining_raw_bytes):
+    def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
-        self._encap = Ethertype(self.ethertype, remaining_raw_bytes)
+        self._encap = Ethernet_Types.process(self.ethertype, remaining_raw_bytes)
 
 
 @dataclass
@@ -83,8 +83,8 @@ class Packet_802_2(object):
         self.OUI = binascii.b2a_hex_(__oui)
         self.protocol_id = __code
 
-        self.__parser_upper_layer_protocol(raw_bytes[9:])
+        self.__parse_upper_layer_protocol(raw_bytes[9:])
 
-    def __parser_upper_layer_protocol(self, remaining_raw_bytes):
+    def __parse_upper_layer_protocol(self, remaining_raw_bytes):
         # not parser out, need to investigate futher
         self.__encap = remaining_raw_bytes

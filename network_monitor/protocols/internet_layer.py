@@ -3,8 +3,10 @@ import struct
 from dataclasses import dataclass
 
 from .transport_layer import IP_Protocols
-from .extension_headers import IPv6_Ext_Headers
+
 from .protocol_utils import get_ipv4_addr, get_ipv6_addr
+
+from .parsers import Ethernet_Types, IP_Protocols
 
 
 @dataclass
@@ -64,7 +66,7 @@ class IPv4(object):
             # raw bytes contains Option field data
             pass
         else:
-            self.__parser_upper_layer_protocol(raw_bytes[20:])
+            self.__parse_upper_layer_protocol(raw_bytes[20:])
 
     def _options(self, remaining_raw_bytes):
         """ used to parser Options flield """
@@ -73,9 +75,65 @@ class IPv4(object):
         # The packet payload is not included in the checksum
         print(f"Options field size: {len(remaining_raw_bytes)}")
 
-    def __parser_upper_layer_protocol(self, remaining_raw_bytes):
+    def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
-        self._encap = IP_Protocols(self.protocol, remaining_raw_bytes)
+        self._encap = IP_Protocols.process(self.protocol, remaining_raw_bytes)
+
+
+Ethernet_Types.register(2048, IPv4)
+
+
+class IPv6_Ext_Headers(object):
+    """ ipv6 extension header extractor """
+
+    EXT_HEADER_LOOKUP = [
+        0,  #: "Hop by Hop_Options",
+        43,  #: "Routing",
+        44,  #: "Fragment",
+        50,  #: "Encapsulating Security Payload (ESP)",
+        51,  #: "Authentication Header (AH)",
+        59,  #: "No Next Header - inspect payload",
+        60,  #: "Destination Options",
+        135,  #: "Mobility",
+        139,  #: "Host Identity Protocol",
+        140,  #: "Shim6 Protocol",
+        253,  #: "Reserved",
+        254,  #: "Reserved",
+    ]
+
+    def __init__(self):
+        self._headers = []
+
+    def parse_extension_headers(self, next_header, raw_bytes):
+        def parse_header(remaining_raw_bytes):
+            __next_header, __ext_header_len = struct.unpack(
+                "! B B", remaining_raw_bytes[:2]
+            )
+
+            return (
+                __next_header,
+                remaining_raw_bytes[:__ext_header_len],
+                remaining_raw_bytes[__ext_header_len:],
+            )
+
+        if next_header not in self.EXT_HEADER_LOOKUP:
+            # upper-layer protocol
+            return self._headers, next_header, raw_bytes
+        else:
+            # for clarity
+            r_raw_bytes = raw_bytes
+            ext_header = next_header
+
+            # extract extion until upper layer protocol is reached
+            while ext_header in self.EXT_HEADER_LOOKUP:
+                # should parse header to append id and data
+                new_ext_header, ext_header_data, r_raw_bytes = parse_header(r_raw_bytes)
+
+                # need to implement Extion headers parsers to decode headers
+                self._headers.append((ext_header, ext_header_data))
+                ext_header = new_ext_header
+
+            return self._headers, ext_header, r_raw_bytes
 
 
 @dataclass
@@ -117,11 +175,14 @@ class IPv6(object):
         ) = IPv6_Ext_Headers().parse_extension_headers(self.next_header, raw_bytes[40:])
 
         # parse upper layer protocol
-        self.__parser_upper_layer_protocol(protocol, remaining_raw_bytes)
+        self.__parse_upper_layer_protocol(protocol, remaining_raw_bytes)
 
-    def __parser_upper_layer_protocol(self, protocol, remaining_raw_bytes):
+    def __parse_upper_layer_protocol(self, protocol, remaining_raw_bytes):
         # The values are shared with those used for the IPv4 protocol field
-        self._encap = IPv4_Protocols(protocol, remaining_raw_bytes)
+        self._encap = IP_Protocols.process(protocol, remaining_raw_bytes)
+
+
+Ethernet_Types.register(34525, IPv6)
 
 
 @dataclass
@@ -175,32 +236,82 @@ class ARP(object):
             return str(proto_addr)
 
 
-class Ethertype(object):
-    """wrapper for the different ethertype parsers
+Ethernet_Types.register(2054, ARP)
 
-    parser implemented:
-        - IPv4
-        - ARP
-        - IPv6
-        - CDP
-    """
 
-    ETHERTYPE_LOOKUP = {
-        2048: IPv4,
-        2054: ARP,
-        34525: IPv6,
-    }
+@dataclass
+class CDP(object):
+    description = "Cisco Discovery Protocol"
 
-    def __init__(self, ethertype, raw_bytes):
+    def __init__(self, raw_bytes):
+        # proprietary protocol
+        pass
 
-        try:
-            self._encap = self.ETHERTYPE_LOOKUP[ethertype](raw_bytes)
-            print(self._encap)
-        except KeyError:
-            # parser not implemented
-            # add logging functionality here
 
-            self._encap = Unknown(f"Parser for Ethertype {ethertype} not implemented")
-            print(f"Parser for Ethertype {ethertype} not implemented")
+Ethernet_Types.register(8192, CDP)
 
-        # would any other exception occur?
+
+@dataclass
+class IGMP(object):
+
+    description = "Internet Group Management Protocol"
+    type_: int
+    max_resp_time: int
+    checksum: int
+    group_address: str
+
+    def __init__(self, raw_bytes):
+        __tp, __mrt, __chk, __ga = struct.unpack("! B B H 4s", raw_bytes[:8])
+
+        self.type_ = __tp
+        self.max_resp_time = __mrt
+        self.checksum = __chk
+        self.group_address = get_ipv4_addr(__ga)
+
+        # need to implement parser for message types
+
+
+IP_Protocols.register(2, IGMP)
+
+
+@dataclass
+class ICMPv6(object):
+
+    description = "Internet Control Message Protocol for IPv6"
+    type_: int
+    code: int
+    checksum: int
+    message: bytes
+
+    def __init__(self, raw_bytes):
+        __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
+        self.type = __tp
+        self.code = __cd
+        self.checksum = __chk.decode("latin-1")
+        self.message = __msg.decode("latin-1")
+
+
+IP_Protocols.register(58, ICMPv6)
+
+
+@dataclass
+class ICMP(object):
+
+    description = "Internet Control Message Protocol"
+    type_: int
+    code: int
+    checksum: int
+    message: bytes
+
+    def __init__(self, raw_bytes):
+
+        __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
+        self.type_ = __tp
+        self.code = __cd
+        self.checksum = __chk
+
+        # implement parser to decode control messages
+        self.message = __msg
+
+
+IP_Protocols.register(1, ICMP)

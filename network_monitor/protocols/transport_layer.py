@@ -1,66 +1,7 @@
 import struct
 import sys
 from dataclasses import dataclass
-
-# IGMP, ICMP, ICMPv6 should be defined in internet_layer file. defining here to avoid cicular import
-# should be able to fix with parser register implementation
-
-
-@dataclass
-class IGMP(object):
-
-    description = "Internet Group Management Protocol"
-    type_: int
-    max_resp_time: int
-    checksum: int
-    group_address: str
-
-    def __init__(self, raw_bytes):
-        __tp, __mrt, __chk, __ga = struct.unpack("! B B H 4s", raw_bytes[:8])
-
-        self.type_ = __tp
-        self.max_resp_time = __mrt
-        self.checksum = __chk
-        self.group_address = get_ipv4_addr(__ga)
-
-        # need to implement parser for message types
-
-
-@dataclass
-class ICMPv6(object):
-
-    description = "Internet Control Message Protocol for IPv6"
-    type_: int
-    code: int
-    checksum: int
-    message: bytes
-
-    def __init__(self, raw_bytes):
-        __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
-        self.type = __tp
-        self.code = __cd
-        self.checksum = __chk.decode("latin-1")
-        self.message = __msg.decode("latin-1")
-
-
-@dataclass
-class ICMP(object):
-
-    description = "Internet Control Message Protocol"
-    type_: int
-    code: int
-    checksum: int
-    message: bytes
-
-    def __init__(self, raw_bytes):
-
-        __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
-        self.type_ = __tp
-        self.code = __cd
-        self.checksum = __chk
-
-        # implement parser to decode control messages
-        self.message = __msg
+from .parsers import IP_Protocols
 
 
 @dataclass
@@ -117,6 +58,9 @@ class TCP(object):
             self._payload = raw_bytes[20:]
 
 
+IP_Protocols.register(6, TCP)
+
+
 @dataclass
 class UDP(object):
 
@@ -142,26 +86,4 @@ class UDP(object):
         self._payload = raw_bytes[8:]
 
 
-class IP_Protocols(object):
-    """wrapper for the different ipv4 protocols parsers"""
-
-    PROTOCOL_LOOKUP = {
-        1: ICMP,
-        2: IGMP,
-        6: TCP,
-        17: UDP,
-        58: ICMPv6,
-    }
-
-    def __init__(self, protocol, raw_bytes):
-
-        try:
-            self._encap = self.PROTOCOL_LOOKUP[protocol](raw_bytes)
-            print(self._encap)
-        except KeyError:
-            # would any other exception occur?
-            # add loggin functionality here
-            self._encap = Unknown(
-                f"Parser for IPv4 protocal {protocol} not implemented"
-            )
-            print(f"Parser for IPv4 protocal {protocol} not implemented")
+IP_Protocols.register(17, UDP)
