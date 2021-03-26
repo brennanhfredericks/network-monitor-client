@@ -2,7 +2,7 @@ import queue
 import threading
 import time
 
-from ..protocols import AF_Packet, Packet_802_3
+from ..protocols import AF_Packet, Packet_802_3, Packet_802_2
 
 
 class Packet_Parser(object):
@@ -24,16 +24,14 @@ class Packet_Parser(object):
                 # do processing with data
                 af_packet = AF_Packet(address)
 
-                # could use af_packet proto value to select appraite packet
+                out_packet = None
 
-                # print(
-                #     f"AF Packet - proto: {af_packet.proto}, pkttype: {af_packet.pkttype}"
-                # )
-
-                # check whether WIFI packets are different from ethernet packets
-                out_packet = Packet_802_3(raw_bytes)
-                assert af_packet.proto == out_packet.ethertype
-                # print(f"802_3 Packet: {out_packet}")
+                if af_packet.proto >= 0 and af_packet.proto <= 1500:
+                    # logical link control (LLC) Numbers
+                    out_packet = Packet_802_2(raw_bytes)
+                else:
+                    # check whether WIFI packets are different from ethernet packets
+                    out_packet = Packet_802_3(raw_bytes)
 
             else:
                 # sleep for 100ms

@@ -50,11 +50,7 @@ class Packet_802_3(object):
 
     def __parser_upper_layer_protocol(self, remaining_raw_bytes):
 
-        if self.ethertype >= 0 and self.ethertype <= 1500:
-            # logical link control (LLC) Numbers
-            self._encap = Packet_802_2(self.ethertype, remaining_raw_bytes)
-        else:
-            self._encap = Ethertype(self.ethertype, remaining_raw_bytes)
+        self._encap = Ethertype(self.ethertype, remaining_raw_bytes)
 
 
 @dataclass
@@ -67,7 +63,7 @@ class Packet_802_2(object):
     OUI: str
     protocol_id: int
 
-    def __init__(self, ether_type, raw_bytes):
+    def __init__(self, raw_bytes):
         # could be unpacking this wrong need to verify
         # __dsap, __ssap, __ctl, __oi, __code = struct.unpack(
         #     "! c c c 3s H", raw_bytes[:8]
