@@ -80,4 +80,4 @@
     - solved circular reference imports with delayed import. only import when function is called
     - could wrap protocol registering with decorater, cleaner
 
-
+    - could add raw_logger to commandline args or create a separete groups for them.
