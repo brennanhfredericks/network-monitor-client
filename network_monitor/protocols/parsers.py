@@ -2,8 +2,6 @@ from .protocol_utils import Unknown
 
 from .layer import Layer_Protocols
 
-# from .collect_parsers import
-
 
 class Parser:
     """ class to register all packet parsers for various levels"""
@@ -32,7 +30,7 @@ class Parser:
             print(f"parsed: {self._encap}")
         except KeyError as e:
             self._encap = Unknown(f"{identifier} {raw_bytes}")
-            print(f"parse time {self.__protocol_parsers}")
+
             print(f"{layer} {identifier} not implemented")
 
 

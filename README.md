@@ -78,6 +78,6 @@
     - need to investigate unpacking 802.2 packet, might be wrong, check commet at code
 
     - solved circular reference imports with delayed import. only import when function is called
-
+    - could wrap protocol registering with decorater, cleaner
 
 
