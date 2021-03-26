@@ -1,5 +1,7 @@
 import socket
 import struct
+import sys
+
 from dataclasses import dataclass
 from .protocol_utils import get_mac_addr
 from .parsers import Ethernet_Types
@@ -33,6 +35,9 @@ class AF_Packet(object):
         self.hwaddr = get_mac_addr(address[4])
 
 
+print(Ethernet_Types.protocol_parsers)
+
+
 @dataclass
 class Packet_802_3(object):
     description = "Ethernet 802.3 Packet"
@@ -51,6 +56,7 @@ class Packet_802_3(object):
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
         self._encap = Ethernet_Types.process(self.ethertype, remaining_raw_bytes)
+        sys.exit()
 
 
 @dataclass

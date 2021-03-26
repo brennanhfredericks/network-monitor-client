@@ -2,18 +2,18 @@ from .protocol_utils import Unknown
 
 
 class Parser(object):
+    protocol_parsers = {}
+
     def __init__(self, name: str):
         self.name = name
-        self.__protocol_parsers = {}
 
-    def register(self, identifier, parser):
-        # need to implement check for
-        self.__protocol_parsers[identifier] = parser
+    # def register(self, identifier, parser):
+    #     # need to implement check for
+    #     self.protocol_parsers[identifier] = parser
 
     def process(self, protocol, raw_bytes):
-        print(self.__protocol_parsers)
         try:
-            self._encap = self.__protocol_parsers[protocol](raw_bytes)
+            self._encap = self.protocol_parsers[protocol](raw_bytes)
             print(self._encap)
         except KeyError:
             # would any other exception occur?

@@ -80,7 +80,7 @@ class IPv4(object):
         self._encap = IP_Protocols.process(self.protocol, remaining_raw_bytes)
 
 
-Ethernet_Types.register(2048, IPv4)
+Ethernet_Types.protocol_parsers[2048] = IPv4
 
 
 class IPv6_Ext_Headers(object):
@@ -182,7 +182,7 @@ class IPv6(object):
         self._encap = IP_Protocols.process(protocol, remaining_raw_bytes)
 
 
-Ethernet_Types.register(34525, IPv6)
+Ethernet_Types.protocol_parsers[34525] = IPv6
 
 
 @dataclass
@@ -236,7 +236,7 @@ class ARP(object):
             return str(proto_addr)
 
 
-Ethernet_Types.register(2054, ARP)
+Ethernet_Types.protocol_parsers[2054] = ARP
 
 
 @dataclass
@@ -248,7 +248,7 @@ class CDP(object):
         pass
 
 
-Ethernet_Types.register(8192, CDP)
+Ethernet_Types.protocol_parsers[8192] = CDP
 
 
 @dataclass
