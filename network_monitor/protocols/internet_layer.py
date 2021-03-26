@@ -2,11 +2,14 @@ import sys
 import struct
 from dataclasses import dataclass
 
-from .transport_layer import IP_Protocols
 
 from .protocol_utils import get_ipv4_addr, get_ipv6_addr
 
-from .parsers import Ethernet_Types, IP_Protocols
+from .parsers import Protocol_Parser
+from .layer import Layer_Protocols
+
+
+collect_protocols = []  # (level,identifier,parser)
 
 
 @dataclass
@@ -77,10 +80,12 @@ class IPv4(object):
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
-        self._encap = IP_Protocols.process(self.protocol, remaining_raw_bytes)
+        self._encap = Protocol_Parser.parse(
+            Layer_Protocols.IP_protocols, self.protocol, remaining_raw_bytes
+        )
 
 
-Ethernet_Types.protocol_parsers[2048] = IPv4
+collect_protocols.append((Layer_Protocols.Ethertype, 2048, IPv4))
 
 
 class IPv6_Ext_Headers(object):
@@ -179,10 +184,13 @@ class IPv6(object):
 
     def __parse_upper_layer_protocol(self, protocol, remaining_raw_bytes):
         # The values are shared with those used for the IPv4 protocol field
-        self._encap = IP_Protocols.process(protocol, remaining_raw_bytes)
+
+        self._encap = Protocol_Parser.parse(
+            Layer_Protocols.IP_protocols, self.protocol, remaining_raw_bytes
+        )
 
 
-Ethernet_Types.protocol_parsers[34525] = IPv6
+collect_protocols.append((Layer_Protocols.Ethertype, 34525, IPv6))
 
 
 @dataclass
@@ -236,7 +244,7 @@ class ARP(object):
             return str(proto_addr)
 
 
-Ethernet_Types.protocol_parsers[2054] = ARP
+collect_protocols.append((Layer_Protocols.Ethertype, 2054, ARP))
 
 
 @dataclass
@@ -248,7 +256,7 @@ class CDP(object):
         pass
 
 
-Ethernet_Types.protocol_parsers[8192] = CDP
+collect_protocols.append((Layer_Protocols.Ethertype, 8192, CDP))
 
 
 @dataclass
@@ -271,7 +279,7 @@ class IGMP(object):
         # need to implement parser for message types
 
 
-IP_Protocols.register(2, IGMP)
+collect_protocols.append((Layer_Protocols.IP_protocols, 2, IGMP))
 
 
 @dataclass
@@ -291,7 +299,7 @@ class ICMPv6(object):
         self.message = __msg.decode("latin-1")
 
 
-IP_Protocols.register(58, ICMPv6)
+collect_protocols.append((Layer_Protocols.IP_protocols, 58, ICMPv6))
 
 
 @dataclass
@@ -314,4 +322,8 @@ class ICMP(object):
         self.message = __msg
 
 
-IP_Protocols.register(1, ICMP)
+collect_protocols.append((Layer_Protocols.IP_protocols, 1, ICMP))
+
+
+def get_internet_layer_parsers():
+    return collect_protocols

@@ -1,26 +1,54 @@
 from .protocol_utils import Unknown
 
+from .layer import Layer_Protocols
 
-class Parser(object):
-    protocol_parsers = {}
+# from .collect_parsers import
 
-    def __init__(self, name: str):
-        self.name = name
 
-    # def register(self, identifier, parser):
-    #     # need to implement check for
-    #     self.protocol_parsers[identifier] = parser
+class Parser:
+    """ class to register all packet parsers for various levels"""
 
-    def process(self, protocol, raw_bytes):
+    __protocol_parsers = {}
+
+    def __init__(self):
+
+        # init layer protocols
+        for layer_protocol in Layer_Protocols:
+            self.__protocol_parsers[layer_protocol] = {}
+
+    @property
+    def parsers(self):
+
+        return self.__protocol_parsers
+
+    def register(self, layer, identifier, protocol_parser):
+        # check if dataclass and callable
+        self.__protocol_parsers[layer][identifier] = protocol_parser
+
+    def parse(self, layer, identifier, raw_bytes):
+        """ use to register parser"""
         try:
-            self._encap = self.protocol_parsers[protocol](raw_bytes)
-            print(self._encap)
-        except KeyError:
-            # would any other exception occur?
-            # add loggin functionality here
-            self._encap = Unknown(f"Parser for {self.name} {protocol} not implemented")
-            print(f"Parser for {self.name} {protocol} not implemented")
+            self._encap = self.__protocol_parsers[layer][identifier](raw_bytes)
+            print(f"parsed: {self._encap}")
+        except KeyError as e:
+            self._encap = Unknown(f"{identifier} {raw_bytes}")
+            print(f"parse time {self.__protocol_parsers}")
+            print(f"{layer} {identifier} not implemented")
 
 
-IP_Protocols = Parser("IP Protocols")
-Ethernet_Types = Parser("Ethernet Types")
+Protocol_Parser = Parser()
+
+
+def register_parsers():
+    from .internet_layer import get_internet_layer_parsers
+    from .transport_layer import get_transport_layer_parsers
+
+    parsers = []
+    parsers += get_internet_layer_parsers()
+    parsers += get_transport_layer_parsers()
+
+    for layer, identifier, protocol_parser in parsers:
+        Protocol_Parser.register(layer, identifier, protocol_parser)
+
+
+register_parsers()

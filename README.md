@@ -74,10 +74,10 @@
 
 # For consideration 
     - use interface addresses as identifier when posting data to server
-    - could use sub classing for service trait
+    - could use inheritance for service trait
     - need to investigate unpacking 802.2 packet, might be wrong, check commet at code
 
-    - could implement protocols and register them (in a dictionary for lookup), would then avoid the need manually specify protocol look up tables and easily  expandable
-    - restructure code in to module form, in order to implement test and seperate from source code. have a look at `internet protocol suite` when modularising source code.
+    - solved circular reference imports with delayed import. only import when function is called
+
 
 

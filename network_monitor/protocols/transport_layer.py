@@ -1,7 +1,9 @@
 import struct
 import sys
 from dataclasses import dataclass
-from .parsers import IP_Protocols
+from .layer import Layer_Protocols
+
+collect_protocols = []  # (level,identifier,parser)
 
 
 @dataclass
@@ -58,7 +60,7 @@ class TCP(object):
             self._payload = raw_bytes[20:]
 
 
-IP_Protocols.register(6, TCP)
+collect_protocols.append((Layer_Protocols.IP_protocols, 6, TCP))
 
 
 @dataclass
@@ -86,4 +88,8 @@ class UDP(object):
         self._payload = raw_bytes[8:]
 
 
-IP_Protocols.register(17, UDP)
+collect_protocols.append((Layer_Protocols.IP_protocols, 17, UDP))
+
+
+def get_transport_layer_parsers():
+    return collect_protocols
