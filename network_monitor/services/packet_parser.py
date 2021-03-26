@@ -1,30 +1,38 @@
 import queue
 import threading
+import time
+
+from ..protocols import AF_Packet, Packet_802_3
 
 
 class Packet_Parser(object):
     """ Class for processing bytes packets"""
 
-    def __init__(self, data_queue: queue.Queue, output_queue: queue.Queue = None):
+    def __init__(self, data_queue: queue.Queue, output_queue: queue.Queue):
 
-        self.data_queue = data_queue
+        self._data_queue = data_queue
+        self._output_queue = output_queue
 
     def _parser(self):
 
         # clearout data_queue before exiting loop
-        while self._sentinal or not self.data_queue.empty():
+        while self._sentinal or not self._data_queue.empty():
 
-            if not self.data_queue.empty():
-                raw_bytes, address = self.data_queue.get()
+            if not self._data_queue.empty():
+                raw_bytes, address = self._data_queue.get()
 
                 # do processing with data
                 af_packet = AF_Packet(address)
+
+                # could use af_packet proto value to select appraite packet
+
                 # print(
                 #     f"AF Packet - proto: {af_packet.proto}, pkttype: {af_packet.pkttype}"
                 # )
 
                 # check whether WIFI packets are different from ethernet packets
                 out_packet = Packet_802_3(raw_bytes)
+                assert af_packet.proto == out_packet.ethertype
                 # print(f"802_3 Packet: {out_packet}")
 
             else:

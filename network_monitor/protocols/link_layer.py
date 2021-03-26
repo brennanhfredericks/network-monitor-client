@@ -1,5 +1,8 @@
+import socket
+import struct
 from dataclasses import dataclass
-
+from .protocol_utils import get_mac_addr
+from .internet_layer import Ethertype
 
 PKTTYPE_LOOKUP = {
     socket.PACKET_BROADCAST: "PACKET_BROADCAST",

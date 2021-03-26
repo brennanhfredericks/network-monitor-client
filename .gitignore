@@ -1,5 +1,5 @@
 ### python pyc
-__pycache__/*
+**/*.pyc
 
 ### VScode ####
 .vscode/*

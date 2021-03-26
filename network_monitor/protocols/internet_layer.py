@@ -1,3 +1,12 @@
+import sys
+import struct
+from dataclasses import dataclass
+
+from .transport_layer import IP_Protocols
+from .extension_headers import IPv6_Ext_Headers
+from .protocol_utils import get_ipv4_addr, get_ipv6_addr
+
+
 @dataclass
 class IPv4(object):
 
@@ -66,7 +75,7 @@ class IPv4(object):
 
     def __parser_upper_layer_protocol(self, remaining_raw_bytes):
 
-        self._encap = IPv4_Protocols(self.protocol, remaining_raw_bytes)
+        self._encap = IP_Protocols(self.protocol, remaining_raw_bytes)
 
 
 @dataclass
@@ -113,63 +122,6 @@ class IPv6(object):
     def __parser_upper_layer_protocol(self, protocol, remaining_raw_bytes):
         # The values are shared with those used for the IPv4 protocol field
         self._encap = IPv4_Protocols(protocol, remaining_raw_bytes)
-
-
-@dataclass
-class IGMP(object):
-
-    description = "Internet Group Management Protocol"
-    type_: int
-    max_resp_time: int
-    checksum: int
-    group_address: str
-
-    def __init__(self, raw_bytes):
-        __tp, __mrt, __chk, __ga = struct.unpack("! B B H 4s", raw_bytes[:8])
-
-        self.type_ = __tp
-        self.max_resp_time = __mrt
-        self.checksum = __chk
-        self.group_address = get_ipv4_addr(__ga)
-
-        # need to implement parser for message types
-
-
-@dataclass
-class ICMPv6(object):
-
-    description = "Internet Control Message Protocol for IPv6"
-    type_: int
-    code: int
-    checksum: int
-    message: bytes
-
-    def __init__(self, raw_bytes):
-        __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
-        self.type = __tp
-        self.code = __cd
-        self.checksum = __chk.decode("latin-1")
-        self.message = __msg.decode("latin-1")
-
-
-@dataclass
-class ICMP(object):
-
-    description = "Internet Control Message Protocol"
-    type_: int
-    code: int
-    checksum: int
-    message: bytes
-
-    def __init__(self, raw_bytes):
-
-        __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
-        self.type_ = __tp
-        self.code = __cd
-        self.checksum = __chk
-
-        # implement parser to decode control messages
-        self.message = __msg
 
 
 @dataclass

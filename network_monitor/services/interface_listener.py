@@ -78,7 +78,7 @@ class InterfaceContextManager(object):
             self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
 
 
-class Network_Listener(object):
+class Interface_Listener(object):
     # maximum ethernet frame size is 1522 bytes
     BUFFER_SIZE = 4096
 
@@ -86,7 +86,7 @@ class Network_Listener(object):
         # used to initialize required things
 
         self.ifname = ifname
-        self.data_queue = data_queue
+        self._data_queue = data_queue
 
     def _listen(self):
         try:
@@ -96,7 +96,7 @@ class Network_Listener(object):
                         # packet = bytes, address
                         packet = interface.recvfrom(self.BUFFER_SIZE)
 
-                        self.data_queue.put(packet)
+                        self._data_queue.put(packet)
 
                     except Exception as e:
                         # add logging functionality here

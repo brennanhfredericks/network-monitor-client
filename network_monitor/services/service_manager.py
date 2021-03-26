@@ -1,3 +1,10 @@
+import netifaces
+import collections
+import queue
+import time
+import sys
+
+
 class Service_Manager(object):
     def __init__(self, interface_name):
         self._ifname = interface_name
@@ -36,47 +43,26 @@ class Service_Manager(object):
 
         return None
 
-    def start(self):
-        # use to start service in the correct order
-
-        # network listining service
-        self._input_queue = queue.Queue()
-        self._ouput_queue = queue.Queue()
-
-        # start network listener
-        network_listener = Network_Listener(self._ifname, self._input_queue)
-        self._start_service("network listener", network_listener)
-
-        # start packet parser
-        packet_parser = Packet_Parser(self._input_queue)
-        self._start_service("packet parser", packet_parser)
-
-    def stop(self):
-        # use to stop service in the correct order
-        # need to stop service using signal, check to handle exit case correctly
-
-        self._stop_all_services()
-
-    def _start_service(self, service_name: str, service_obj):
+    def start_service(self, service_name: str, service_obj):
         # start service
-
         service_obj.start()
 
+        # hack that wait to check if any errors are pushed on to data queue
         time.sleep(0.1)
 
-        if service_obj.data_queue.qsize() == 2:
-            item = service_obj.data_queue.get()
+        if service_obj._data_queue.qsize() == 2:
+            item = service_obj._data_queue.get()
             if isinstance(item, Exception):
-                (type_, value, traceback) = service_obj.data_queue.get()
+                (type_, value, traceback) = service_obj._data_queue.get()
                 print(f"Error starting {service_name} service: {item}")
 
-                self._stop_all_services()
+                self.stop_all_services()
                 sys.exit(0)
 
         # add service to Order dict
         self._services[service_name] = service_obj
 
-    def _stop_all_services(self):
+    def stop_all_services(self):
 
         for k, v in self._services.items():
             # stop service and join thread

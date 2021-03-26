@@ -1,6 +1,8 @@
 import binascii
 import struct
 
+from dataclasses import dataclass
+
 
 def get_ipv4_addr(addr):
     return ".".join(map(str, addr))
