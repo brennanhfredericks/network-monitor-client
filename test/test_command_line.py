@@ -1,1 +1,1 @@
-from load_data import load_file
+from test_load_data import load_file
