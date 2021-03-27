@@ -21,7 +21,7 @@ def load_file(filename):
             path_ = os.path.join(DIR, f)
             if not os.path.exists(path_):
                 raise ValueError(f"{path_} doesn't exists")
-            path.append(path)
+            path.append(path_)
     else:
         raise ValueError("only support str and Interable(str)")
 
