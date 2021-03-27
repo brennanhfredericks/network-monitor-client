@@ -5,7 +5,7 @@ sys.path.insert(0, "../")
 import queue
 import threading
 import binascii
-
+import os
 
 from network_monitor import (
     Service_Manager,
@@ -41,6 +41,9 @@ def log_ipv4_packets(ifname, number):
                 waitfor = False
     service_manager.stop_all_services()
 
+    if not os.path.exists("./raw_output"):
+        os.makedirs("./raw_output")
+
     # file output name
     outname = f"./raw_output/raw_ipv4_output.lp"
 
@@ -49,6 +52,7 @@ def log_ipv4_packets(ifname, number):
 
             base64 = binascii.b2a_base64(packet)
             fout.write(base64)
+    print("finished with IPv4")
 
 
 def log_ipv6_packets(ifname, number):
@@ -85,6 +89,7 @@ def log_ipv6_packets(ifname, number):
 
             base64 = binascii.b2a_base64(packet)
             fout.write(base64)
+    print("finished with IPv6")
 
 
 def log_arp_packets(ifname, number):
@@ -121,6 +126,7 @@ def log_arp_packets(ifname, number):
 
             base64 = binascii.b2a_base64(packet)
             fout.write(base64)
+    print("finished with ARP")
 
 
 if __name__ == "__main__":
