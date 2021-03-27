@@ -186,7 +186,7 @@ class IPv6(object):
         # The values are shared with those used for the IPv4 protocol field
 
         self._encap = Protocol_Parser.parse(
-            Layer_Protocols.IP_protocols, self.protocol, remaining_raw_bytes
+            Layer_Protocols.IP_protocols, protocol, remaining_raw_bytes
         )
 
 
@@ -295,7 +295,7 @@ class ICMPv6(object):
         __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
         self.type = __tp
         self.code = __cd
-        self.checksum = __chk.decode("latin-1")
+        self.checksum = __chk
         self.message = __msg.decode("latin-1")
 
 

@@ -6,7 +6,7 @@ import signal
 import time
 
 from .protocols.parsers import Protocol_Parser
-from .protocols import AF_Packet
+from .protocols import AF_Packet, Packet_802_3, Packet_802_2
 
 from .services import Service_Manager, Packet_Parser, Interface_Listener
 

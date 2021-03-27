@@ -27,7 +27,7 @@ class Parser:
         """ use to register parser"""
         try:
             self._encap = self.__protocol_parsers[layer][identifier](raw_bytes)
-            print(f"parsed: {self._encap}")
+            # print(f"parsed: {self._encap}")
         except KeyError as e:
             self._encap = Unknown(f"{identifier} {raw_bytes}")
 

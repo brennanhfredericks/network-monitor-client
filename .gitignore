@@ -1,5 +1,6 @@
 ### python pyc
 **/*.pyc
-
+### raw packets used during testing ###
+**/*.lp
 ### VScode ####
 .vscode/*
