@@ -7,8 +7,8 @@ import threading
 import binascii
 import os
 
-from network_monitor.protocols import Packet_802_3, IPv4, TCP, UDP
-
+from network_monitor.protocols import Packet_802_3, IPv4, TCP, UDP, ARP, IPv6
+from network_monitor.filters import get_protocol
 from test_load_data import load_file
 
 # content of
@@ -17,12 +17,12 @@ def ipv4_packets():
     for packet in load_file("raw_ipv4_output.lp"):
         out_packet = Packet_802_3(packet)
 
-        ret.append(out_packet.ethertype == 2048)
+        ret.append(out_packet.ethertype == IPv4.identifier)
 
     for packet in load_file(("raw_ipv6_output.lp", "raw_arp_output.lp")):
         out_packet = Packet_802_3(packet)
 
-        ret.append(out_packet.ethertype != 2048)
+        ret.append(out_packet.ethertype != IPv4.identifier)
 
     return ret
 
@@ -37,12 +37,12 @@ def ipv6_packets():
     for packet in load_file("raw_ipv6_output.lp"):
         out_packet = Packet_802_3(packet)
 
-        ret.append(out_packet.ethertype == 34525)
+        ret.append(out_packet.ethertype == IPv6.identifier)
 
     for packet in load_file(["raw_ipv4_output.lp", "raw_arp_output.lp"]):
         out_packet = Packet_802_3(packet)
 
-        ret.append(out_packet.ethertype != 34525)
+        ret.append(out_packet.ethertype != IPv6.identifier)
 
     return ret
 
@@ -56,12 +56,12 @@ def arp_packets():
     for packet in load_file("raw_arp_output.lp"):
         out_packet = Packet_802_3(packet)
 
-        ret.append(out_packet.ethertype == 2054)
+        ret.append(out_packet.ethertype == ARP.identifier)
 
     for packet in load_file(["raw_ipv4_output.lp", "raw_ipv6_output.lp"]):
         out_packet = Packet_802_3(packet)
 
-        ret.append(out_packet.ethertype != 2054)
+        ret.append(out_packet.ethertype != ARP.identifier)
 
     return ret
 
@@ -70,34 +70,35 @@ def test_arp_packets():
     assert all(arp_packets()) == True
 
 
-def packet_layer_walk(out_packet, cls):
-
-    if out_packet is None:
-        return None
-    elif isinstance(out_packet, cls):
-        return out_packet
-    else:
-        out = packet_layer_walk(out_packet.upper_layer(), cls)
-
-    return out
-
-
 def gen_packet():
     ret = []
     for packet in load_file("raw_ipv4_output.lp"):
         out_packet = Packet_802_3(packet)
-        res_walk = packet_layer_walk(out_packet, IPv4)
+        res_walk = get_protocol(out_packet, IPv4)
 
         # implement if here to save certain packets
 
-        print(res_walk)
+        ret.append(out_packet.ethertype == res_walk.identifier)
+
+    for packet in load_file("raw_arp_output.lp"):
+        out_packet = Packet_802_3(packet)
+        res_walk = get_protocol(out_packet, ARP)
+
+        # implement if here to save certain packets
 
         ret.append(out_packet.ethertype == res_walk.identifier)
-        break
+
+    for packet in load_file("raw_ipv6_output.lp"):
+        out_packet = Packet_802_3(packet)
+        res_walk = get_protocol(out_packet, IPv6)
+
+        # implement if here to save certain packets
+
+        ret.append(out_packet.ethertype == res_walk.identifier)
 
     return ret
 
 
-def test_packet_layer_walk():
+def test_get_protocol():
 
     assert all(gen_packet()) == True
