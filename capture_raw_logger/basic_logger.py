@@ -225,6 +225,6 @@ if __name__ == "__main__":
     # log_ipv4_packets("enp0s3", 100)
     # log_ipv6_packets("enp0s3", 10)
     # log_arp_packets("enp0s3", 10)
-    log_tcp_packets("enp0s3", 1000)
-    log_udp_packets("enp0s3", 1000)
+    log_tcp_packets("enp0s3", 100)
+    log_udp_packets("enp0s3", 100)
     # exit(log_packets("enp0s3"))

@@ -25,3 +25,18 @@ def get_ipv6_addr(addr):
 class Unknown(object):
     description = "Unknown Protocol"
     message: str
+    identifier: int
+
+    def __init__(self, message: str, identifier: int, raw_bytes: bytes):
+
+        self.message = message
+        self.identifier = identifier
+        self.__raw_bytes = raw_bytes
+
+    def raw(self):
+
+        return self.__raw_bytes
+
+    def upper_layer():
+
+        return None

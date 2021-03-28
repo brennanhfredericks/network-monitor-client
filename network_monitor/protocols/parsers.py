@@ -29,7 +29,7 @@ class Parser:
             return self.__protocol_parsers[layer][identifier](raw_bytes)
             # print(f"parsed: {self._encap}")
         except KeyError as e:
-            return Unknown(f"{identifier} {raw_bytes}")
+            return Unknown("no protocol parser available", identifier, raw_bytes)
 
             print(f"{layer} {identifier} not implemented")
 
