@@ -7,6 +7,7 @@ import threading
 import binascii
 import os
 import time
+import signal
 
 from network_monitor import (
     Service_Manager,
@@ -25,7 +26,7 @@ from network_monitor.protocols import (
     IPv6,
     ARP,
 )
-from network_monitor.filters import get_protocol
+from network_monitor.filters import get_protocol, present_protocols
 
 
 def log_packets_based_on_protocols(
@@ -34,29 +35,13 @@ def log_packets_based_on_protocols(
     start_time = int(time.time())
     service_manager = Service_Manager(ifname)
     input_queue = queue.Queue()
-    output_queue = queue.Queue()
+    # output_queue = queue.Queue()
+
+    # start network listener
+    interface_listener = Interface_Listener(ifname, input_queue)
+    service_manager.start_service("interface listener", interface_listener)
 
     raw_packets = []
-    waitfor = True
-    while waitfor:
-
-        if not input_queue.empty():
-
-            raw_bytes, address = input_queue.get()
-
-            af_packet = AF_Packet(address)
-
-            if af_packet.proto > 1500:
-                out_packet = Packet_802_3(raw_bytes)
-
-                out = protocol_filter_only(out_packet, proto_list)
-
-                if out is not None:
-                    # raw_packets.append()
-                    ...
-
-            if len(raw_packets) == number:
-                waitfor = False
 
     def create_name() -> str:
         """
@@ -69,13 +54,37 @@ def log_packets_based_on_protocols(
 
     def log_to_disk():
         """write raw_packets to disk and exit"""
-        create_name()
-        service_manager.stop_all_services()
+        # create_name()
 
     # exit cleanly
     def signal_handler(sig, frame):
-        log_to_disk()
+        # log_to_disk()
+        service_manager.stop_all_services()
         sys.exit(0)
 
-    signal.signal(signal.SIGTSTP, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
+    # signal.signal(signal.SIGTSTP, signal_handler)
+    # signal.signal(signal.SIGINT, signal_handler)
+
+    waitfor = True
+
+    while waitfor:
+
+        if not input_queue.empty():
+            print("got packet")
+            raw_bytes, address = input_queue.get()
+
+            af_packet = AF_Packet(address)
+
+            if af_packet.proto > 1500:
+                out_packet = Packet_802_3(raw_bytes)
+
+                present_protos = present_protocols(out_packet)
+                print(present_protos)
+                waitfor = False
+
+    service_manager.stop_all_services()
+
+
+if __name__ == "__main__":
+
+    log_packets_based_on_protocols("enp0s3", [IPv4, ARP, IPv6])

@@ -11,21 +11,35 @@ def get_protocol(out_packet, cls):
     return out
 
 
-def collect_protocols(out_packet):
+def present_protocols(out_packet):
     """ return identifier of all protocols present in the packet as """
 
     # top packet has no identifier, only upper layers
     protocols = []
-    while out := out_packet.upper_layer() is not None:
-        if hasattr(out, "identifier"):
-            protocols.append(out.identifier)
+    out = out_packet
+    loop = True
+    while loop:
+        out = out.upper_layer()
+        if out is not None:
+            if hasattr(out, "identifier"):
+                protocols.append(out.identifier)
+            else:
+                loop = False
+                raise ValueError(f"{out} has not identifier attribute")
         else:
-            raise ValueError(f"{out} has not identifier attribute")
-
+            loop = False
     return protocols
 
 
-def is_protocols_in_packet(out_packet, cls):
-    """ return true if provided protocol(s) in the packet else None, when protocol(s) not in packet """
+def which_protocols_in_packet(out_packet, proto_list):
+    """return a dictionary where they key is the protocol identifier and the value is
+    a boolean,true if provided protocol(s) in the packet else None, when protocol(s) not in packet"""
 
-    ...
+    ret = {k.identifier: False for k in proto_list}
+
+    # update dictionary
+
+    for identi in present_protocols(out_packet):
+        ret[identi] = True
+
+    return ret
