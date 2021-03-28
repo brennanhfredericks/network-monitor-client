@@ -115,3 +115,17 @@ def tcp_packets():
 
 def test_tcp_packets():
     assert all(tcp_packets()) == True
+
+
+def udp_packets():
+    ret = []
+    for packet in load_file("raw_udp_output.lp"):
+        out_packet = UDP(packet)
+        print(out_packet)
+        ret.append(out_packet.identifier == UDP.identifier)
+
+    return ret
+
+
+def test_udp_packets():
+    assert all(udp_packets()) == True
