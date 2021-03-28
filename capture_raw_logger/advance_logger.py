@@ -8,6 +8,7 @@ import binascii
 import os
 import time
 import signal
+import collections
 
 from network_monitor import (
     Service_Manager,
@@ -30,7 +31,7 @@ from network_monitor.filters import get_protocol, present_protocols
 
 
 def log_packets_based_on_protocols(
-    ifname: str, proto_list: list, min_number: int = 5, max_number: int = 10
+    ifname: str, proto_list: list, min_number: int = 5, log_dir="./logger_output"
 ):
     start_time = int(time.time())
     service_manager = Service_Manager(ifname)
@@ -41,16 +42,21 @@ def log_packets_based_on_protocols(
     interface_listener = Interface_Listener(ifname, input_queue)
     service_manager.start_service("interface listener", interface_listener)
 
-    raw_packets = []
+    tracker = collections.Counter({proto.identifier: 0 for proto in proto_list})
 
     def create_name() -> str:
         """
         create name for file
-        raw_protocols_1548866456123_15484646453212_ARP_IPv4_IPv6_ICMP.lp"""
-        fname = f"raw_protocols_{start_time}_{int(time.time())}_"
+        raw_protocols_1548866456123_ARP_IPv4_IPv6_ICMP.lp"""
+
+        fname = f"raw_protocols_{start_time}"
 
         for proto_cls in proto_list:
-            print(proto_cls.__name__)
+            fname += f"_{proto_cls.__name__}"
+
+        fname += ".lp"
+
+        return fname
 
     def log_to_disk():
         """write raw_packets to disk and exit"""
@@ -62,29 +68,44 @@ def log_packets_based_on_protocols(
         service_manager.stop_all_services()
         sys.exit(0)
 
-    # signal.signal(signal.SIGTSTP, signal_handler)
-    # signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTSTP, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    fname = create_name()
+
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
     waitfor = True
+    with open(os.path.join(log_dir, fname), "wb") as fout:
+        while waitfor:
 
-    while waitfor:
+            if not input_queue.empty():
 
-        if not input_queue.empty():
-            print("got packet")
-            raw_bytes, address = input_queue.get()
+                raw_bytes, address = input_queue.get()
 
-            af_packet = AF_Packet(address)
+                af_packet = AF_Packet(address)
 
-            if af_packet.proto > 1500:
-                out_packet = Packet_802_3(raw_bytes)
+                if af_packet.proto > 1500:
+                    out_packet = Packet_802_3(raw_bytes)
+                    write_packet = False
+                    for identifier in present_protocols(out_packet):
+                        if identifier in tracker.keys():
+                            tracker[identifier] += 1
+                            write_packet = True
 
-                present_protos = present_protocols(out_packet)
-                print(present_protos)
-                waitfor = False
+                    if write_packet:
+
+                        __tracker = {k: v for k, v in tracker.items()}
+
+                        fout.write(binascii.b2a_base64(raw_bytes))
+
+                if all(map(lambda x: x >= min_number, tracker.values())):
+                    waitfor = False
 
     service_manager.stop_all_services()
 
 
 if __name__ == "__main__":
 
-    log_packets_based_on_protocols("enp0s3", [IPv4, ARP, IPv6])
+    log_packets_based_on_protocols("enp0s3", [TCP, UDP], min_number=20)
