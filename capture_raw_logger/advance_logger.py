@@ -120,6 +120,6 @@ def log_packets_based_on_protocols(
 
 if __name__ == "__main__":
 
-    log_packets_based_on_protocols("enp0s3", [TCP, UDP], min_number=10)
-    log_packets_based_on_protocols("enp0s3", [IPv4, IPv6], min_number=10)
-    log_packets_based_on_protocols("enp0s3", [ARP, ICMP, ICMPv6, IGMP], min_number=10)
+    log_packets_based_on_protocols("br0", [TCP, UDP], min_number=100)
+    log_packets_based_on_protocols("br0", [IPv4, IPv6], min_number=100)
+    log_packets_based_on_protocols("br0", [ARP, ICMP, ICMPv6, IGMP], min_number=10)

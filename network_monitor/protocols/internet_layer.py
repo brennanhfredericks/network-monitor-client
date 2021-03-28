@@ -303,6 +303,7 @@ collect_protocols.append((Layer_Protocols.Ethertype, 8192, CDP))
 class IGMP(object):
 
     description = "Internet Group Management Protocol"
+    identifier = 2
     type_: int
     max_resp_time: int
     checksum: int
@@ -333,6 +334,7 @@ collect_protocols.append((Layer_Protocols.IP_protocols, 2, IGMP))
 class ICMPv6(object):
 
     description = "Internet Control Message Protocol for IPv6"
+    identifier = 58
     type_: int
     code: int
     checksum: int
@@ -360,6 +362,7 @@ collect_protocols.append((Layer_Protocols.IP_protocols, 58, ICMPv6))
 class ICMP(object):
 
     description = "Internet Control Message Protocol"
+    identifier = 1
     type_: int
     code: int
     checksum: int
