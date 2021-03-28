@@ -102,3 +102,16 @@ def gen_packet():
 def test_get_protocol():
 
     assert all(gen_packet()) == True
+
+
+def tcp_packets():
+    ret = []
+    for packet in load_file("raw_tcp_output.lp"):
+        out_packet = TCP(packet)
+        ret.append(out_packet.identifier == TCP.identifier)
+
+    return ret
+
+
+def test_tcp_packets():
+    assert all(tcp_packets()) == True

@@ -37,6 +37,6 @@ class Unknown(object):
 
         return self.__raw_bytes
 
-    def upper_layer():
+    def upper_layer(self):
 
         return None

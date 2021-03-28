@@ -21,7 +21,7 @@ class TCP(object):
     window_size: int
     checksum: int
     urgent_pointer: int  # if URG set
-    # options: bytes
+    options: dict
 
     def __init__(self, raw_bytes):
         # fixed header part
@@ -57,10 +57,26 @@ class TCP(object):
         if self.data_offset > 5:
             # options field has been set need to extract to get to payload
             # implement extractor
-            pass
+            offset = 5 * self.data_offset
+            raw_options = raw_bytes[20:offset]
+            self.__parse_options(raw_options)
+
+            self._payload = raw_bytes[offset:]
         else:
             # payload data probabily encrypted
+            self.options = {}
             self._payload = raw_bytes[20:]
+
+    def __parse_options(self, raw_options_bytes):
+        # Option-Kind (1 byte), Option-Length (1 byte), Option-Data (variable).
+        __kind, __length = struct.unpack("! B B", raw_options_bytes[:2])
+        __data = raw_options_bytes[2:__length]
+
+        self.options = {
+            "Option-Kind": __kind,
+            "Option-Length": __length,
+            "Option-Data": __data,
+        }
 
     def raw(self):
         return self._raw_bytes

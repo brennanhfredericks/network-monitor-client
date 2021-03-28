@@ -2,6 +2,8 @@
 # TODO
 
     - add logging
+    - always log unknown packet
+    - refactor capture logger
     - 802.2 Packet
       - need to investigate IEEE 802.2 packet upper layer data and parser it out if possible. confirm parsing
     - IPv4 outstanding functionality:
@@ -22,7 +24,6 @@
       - implement parser for message types
     - TCP outstanding functionality
       - implement checksum to compare values
-      - implement parser for options part
     - UDP outstanding functionality 
       - implement checksum to compare values
       - payload should be determined based length field value
