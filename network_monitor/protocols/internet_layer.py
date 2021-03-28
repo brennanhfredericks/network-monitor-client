@@ -340,7 +340,7 @@ class ICMPv6(object):
 
     def __init__(self, raw_bytes):
         __tp, __cd, __chk, __msg = struct.unpack("! B B H 4s", raw_bytes[:8])
-        self.type = __tp
+        self.type_ = __tp
         self.code = __cd
         self.checksum = __chk
         self.message = __msg.decode("latin-1")

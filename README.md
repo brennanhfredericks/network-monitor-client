@@ -2,8 +2,7 @@
 # TODO
 
     - add logging
-    - always log unknown packet
-    - refactor capture logger
+    - need to implement test cases for advance logger
     - 802.2 Packet
       - need to investigate IEEE 802.2 packet upper layer data and parser it out if possible. confirm parsing
     - IPv4 outstanding functionality:
