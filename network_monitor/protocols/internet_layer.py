@@ -16,6 +16,7 @@ collect_protocols = []  # (level,identifier,parser)
 class IPv4(object):
 
     description = "Internet Protocol Version 4"
+    identifier = 2048
     version: int
     IHL: int
     DSCP: int
@@ -65,12 +66,14 @@ class IPv4(object):
 
         # Note: If the header length is greater than 5 (i.e., it is from 6 to 15)
         # it means that the options field is present and must be considered.
-        self._raw_bytes = raw_bytes
+
         if self.IHL > 5:
             # raw bytes contains Option field data
             pass
         else:
             self.__parse_upper_layer_protocol(raw_bytes[20:])
+
+        self.__raw_bytes = raw_bytes
 
     def _options(self, remaining_raw_bytes):
         """ used to parser Options flield """
@@ -80,7 +83,7 @@ class IPv4(object):
         print(f"Options field size: {len(remaining_raw_bytes)}")
 
     def raw(self):
-        return self._raw_bytes
+        return self.__raw_bytes
 
     def upper_layer(self):
 
@@ -153,6 +156,7 @@ class IPv6_Ext_Headers(object):
 class IPv6(object):
 
     description = "Internet Protocol Version 6"
+    identifier = 34525
     version: int
     traffic_class: int
     flow_label: int
@@ -212,6 +216,7 @@ collect_protocols.append((Layer_Protocols.Ethertype, 34525, IPv6))
 @dataclass
 class ARP(object):
     description = "Address Resolution Protocol"
+    identifier = 2054
 
     HTYPE: int
     PTYPE: int
@@ -274,6 +279,7 @@ collect_protocols.append((Layer_Protocols.Ethertype, 2054, ARP))
 @dataclass
 class CDP(object):
     description = "Cisco Discovery Protocol"
+    identifier = 8192
 
     def __init__(self, raw_bytes):
         # proprietary protocol

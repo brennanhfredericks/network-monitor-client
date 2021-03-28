@@ -26,10 +26,10 @@ class Parser:
     def parse(self, layer, identifier, raw_bytes):
         """ use to register parser"""
         try:
-            self._encap = self.__protocol_parsers[layer][identifier](raw_bytes)
+            return self.__protocol_parsers[layer][identifier](raw_bytes)
             # print(f"parsed: {self._encap}")
         except KeyError as e:
-            self._encap = Unknown(f"{identifier} {raw_bytes}")
+            return Unknown(f"{identifier} {raw_bytes}")
 
             print(f"{layer} {identifier} not implemented")
 

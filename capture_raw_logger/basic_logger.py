@@ -133,11 +133,8 @@ def log_arp_packets(ifname, number):
     print("finished with ARP")
 
 
-def walk_find(outpacket, cls):
-    ...
-
-
 def log_tcp_packets(ifname, number):
+    raise NotImplemented
     service_manager = Service_Manager(ifname)
     input_queue = queue.Queue()
     output_queue = queue.Queue()
@@ -159,8 +156,17 @@ def log_tcp_packets(ifname, number):
             if af_packet.proto > 1500:
 
                 out_packet = Packet_802_3(raw_bytes)
+                print(out_packet)
+                print(out_packet.raw())
+                print(out_packet._encap)
+                print(out_packet.upper_layer())
+                out = get_protocol(out_packet, TCP)
+                print(out)
+                break
 
-                # raw_packets.append(raw_bytes)
+                if out is not None:
+
+                    raw_packets.append(out.raw())
 
             if len(raw_packets) == number:
                 waitfor = False
@@ -181,5 +187,5 @@ if __name__ == "__main__":
     # log_ipv4_packets("enp0s3", 100)
     # log_ipv6_packets("enp0s3", 10)
     # log_arp_packets("enp0s3", 10)
-    log_tcp_packets("enp0s3", 10)
+    log_tcp_packets("enp0s3", 1)
     # exit(log_packets("enp0s3"))

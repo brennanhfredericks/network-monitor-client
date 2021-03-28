@@ -10,6 +10,7 @@ collect_protocols = []  # (level,identifier,parser)
 class TCP(object):
 
     description = "Transmission Control Protocol"
+    identifier = 6
     source_port: int
     destination_port: int
     sequence_number: int
@@ -75,6 +76,7 @@ collect_protocols.append((Layer_Protocols.IP_protocols, 6, TCP))
 class UDP(object):
 
     description = "User Datagram Protocol"
+    identifier = 17
     source_port: int
     destination_port: int
     length: int

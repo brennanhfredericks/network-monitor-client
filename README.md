@@ -78,6 +78,6 @@
     - need to investigate unpacking 802.2 packet, might be wrong, check commet at code
 
     - solved circular reference imports with delayed import. only import when function is called
-    - could wrap protocol registering with decorater, cleaner
+    - could wrap protocol registering with decorater, cleaner. the identifier could be a field in the class it self
 
     - could add raw_logger to commandline args or create a separete groups for them.
