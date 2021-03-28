@@ -49,7 +49,15 @@ class Packet_802_3(object):
         self.src_MAC = get_mac_addr(__src_addr)
         self.ethertype = __tp
 
+        self._raw_bytes = raw_bytes
+
         self.__parse_upper_layer_protocol(raw_bytes[14:])
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return self._encap
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
@@ -69,6 +77,7 @@ class Packet_802_2(object):
     protocol_id: int
 
     def __init__(self, raw_bytes):
+
         # could be unpacking this wrong need to verify
         # __dsap, __ssap, __ctl, __oi, __code = struct.unpack(
         #     "! c c c 3s H", raw_bytes[:8]
@@ -88,7 +97,16 @@ class Packet_802_2(object):
         self.OUI = binascii.b2a_hex_(__oui)
         self.protocol_id = __code
 
+        # store raw
+        self._raw_bytes = raw_bytes
+
         self.__parse_upper_layer_protocol(raw_bytes[9:])
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        raise NotImplemented
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
         # not parser out, need to investigate futher

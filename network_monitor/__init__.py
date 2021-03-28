@@ -5,9 +5,6 @@ import queue
 import signal
 import time
 
-from .protocols.parsers import Protocol_Parser
-from .protocols import AF_Packet, Packet_802_3, Packet_802_2
-
 from .services import Service_Manager, Packet_Parser, Interface_Listener
 
 
@@ -15,8 +12,6 @@ def default_start(args):
     service_manager = None
 
     if args.interface is not None:
-
-        print(Protocol_Parser.parsers)
 
         # check validate choice and start process
         service_manager = Service_Manager(args.interface)

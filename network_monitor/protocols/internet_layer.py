@@ -3,7 +3,7 @@ import struct
 from dataclasses import dataclass
 
 
-from .protocol_utils import get_ipv4_addr, get_ipv6_addr
+from .protocol_utils import get_ipv4_addr, get_ipv6_addr, get_mac_addr
 
 from .parsers import Protocol_Parser
 from .layer import Layer_Protocols
@@ -65,6 +65,7 @@ class IPv4(object):
 
         # Note: If the header length is greater than 5 (i.e., it is from 6 to 15)
         # it means that the options field is present and must be considered.
+        self._raw_bytes = raw_bytes
         if self.IHL > 5:
             # raw bytes contains Option field data
             pass
@@ -77,6 +78,13 @@ class IPv4(object):
 
         # The packet payload is not included in the checksum
         print(f"Options field size: {len(remaining_raw_bytes)}")
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+
+        return self._encap
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
@@ -179,8 +187,16 @@ class IPv6(object):
             remaining_raw_bytes,
         ) = IPv6_Ext_Headers().parse_extension_headers(self.next_header, raw_bytes[40:])
 
+        self._raw_bytes = raw_bytes
+
         # parse upper layer protocol
         self.__parse_upper_layer_protocol(protocol, remaining_raw_bytes)
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return self._encap
 
     def __parse_upper_layer_protocol(self, protocol, remaining_raw_bytes):
         # The values are shared with those used for the IPv4 protocol field
@@ -230,6 +246,14 @@ class ARP(object):
         self.THA = get_mac_addr(__target_hw_addr)
         self.TPA = self._decode_protocol_addr(__target_proto_addr)
 
+        self._raw_bytes = raw_bytes
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return None
+
     def _decode_protocol_addr(self, proto_addr):
 
         if self.PTYPE == 2048:
@@ -253,7 +277,13 @@ class CDP(object):
 
     def __init__(self, raw_bytes):
         # proprietary protocol
-        pass
+        self._raw_bytes = raw_bytes
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return None
 
 
 collect_protocols.append((Layer_Protocols.Ethertype, 8192, CDP))
@@ -276,7 +306,14 @@ class IGMP(object):
         self.checksum = __chk
         self.group_address = get_ipv4_addr(__ga)
 
+        self._raw_bytes = raw_bytes
         # need to implement parser for message types
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return None
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 2, IGMP))
@@ -297,6 +334,13 @@ class ICMPv6(object):
         self.code = __cd
         self.checksum = __chk
         self.message = __msg.decode("latin-1")
+        self._raw_bytes = raw_bytes
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return None
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 58, ICMPv6))
@@ -320,6 +364,14 @@ class ICMP(object):
 
         # implement parser to decode control messages
         self.message = __msg
+
+        self._raw_bytes = raw_bytes
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return None
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 1, ICMP))

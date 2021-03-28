@@ -50,6 +50,8 @@ class TCP(object):
         self.checksum = __chk_sum
         self.urgent_pointer = __urg_ptr
 
+        self._raw_bytes = raw_bytes
+
         # if data_offset is larger than 5 then option present
         if self.data_offset > 5:
             # options field has been set need to extract to get to payload
@@ -58,6 +60,12 @@ class TCP(object):
         else:
             # payload data probabily encrypted
             self._payload = raw_bytes[20:]
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return None
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 6, TCP))
@@ -83,9 +91,16 @@ class UDP(object):
         self.length = __leng
         self.checksum = __chk_sum
 
+        self._raw_bytes = raw_bytes
         # payload data probabily encrypted
         # should be based on length field, This field specifies the length in bytes of the UDP header and UDP data.
         self._payload = raw_bytes[8:]
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return None
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 17, UDP))
