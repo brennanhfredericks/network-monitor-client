@@ -31,7 +31,12 @@ from network_monitor.filters import get_protocol, present_protocols
 
 
 def log_packets_based_on_protocols(
-    ifname: str, proto_list: list, min_number: int = 5, log_dir="./logger_output"
+    ifname: str,
+    proto_list: list,
+    min_number: int = 5,
+    log_dir="./logger_output",
+    report_interval: int = 5,
+    log_802_2=True,
 ):
     start_time = int(time.time())
     service_manager = Service_Manager(ifname)
@@ -58,10 +63,6 @@ def log_packets_based_on_protocols(
 
         return fname
 
-    def log_to_disk():
-        """write raw_packets to disk and exit"""
-        # create_name()
-
     # exit cleanly
     def signal_handler(sig, frame):
         # log_to_disk()
@@ -77,6 +78,7 @@ def log_packets_based_on_protocols(
         os.makedirs(log_dir)
 
     waitfor = True
+    last_report_time = time.time()
     with open(os.path.join(log_dir, fname), "wb") as fout:
         while waitfor:
 
@@ -97,8 +99,18 @@ def log_packets_based_on_protocols(
                     if write_packet:
 
                         __tracker = {k: v for k, v in tracker.items()}
+                        fout.write(binascii.b2a_base64(raw_bytes))
+                        now = time.time()
+                        if now - last_report_time > report_interval:
+                            last_report_time = now
+
+                            print(f"Tracker: {__tracker}")
+                else:
+
+                    if log_802_2:
 
                         fout.write(binascii.b2a_base64(raw_bytes))
+                        print(f"wrote and 802_2 Packet to log")
 
                 if all(map(lambda x: x >= min_number, tracker.values())):
                     waitfor = False
@@ -108,4 +120,5 @@ def log_packets_based_on_protocols(
 
 if __name__ == "__main__":
 
-    log_packets_based_on_protocols("enp0s3", [TCP, UDP], min_number=20)
+    log_packets_based_on_protocols("enp0s3", [TCP, UDP], min_number=10)
+    log_packets_based_on_protocols("enp0s3", [IPv4, UDP], min_number=10)

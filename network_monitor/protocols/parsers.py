@@ -1,3 +1,6 @@
+import os
+import time
+import binascii
 from .protocol_utils import Unknown
 
 from .layer import Layer_Protocols
@@ -8,11 +11,16 @@ class Parser:
 
     __protocol_parsers = {}
 
-    def __init__(self):
+    def __init__(self, log_dir="./logger_output"):
 
         # init layer protocols
         for layer_protocol in Layer_Protocols:
             self.__protocol_parsers[layer_protocol] = {}
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        self.__fname = os.path.join(
+            log_dir, f"raw_unknown_protocols_{int(time.time())}.lp"
+        )
 
     @property
     def parsers(self):
@@ -29,9 +37,15 @@ class Parser:
             return self.__protocol_parsers[layer][identifier](raw_bytes)
             # print(f"parsed: {self._encap}")
         except KeyError as e:
-            return Unknown("no protocol parser available", identifier, raw_bytes)
 
-            print(f"{layer} {identifier} not implemented")
+            with open(self.__fname, "ab") as fout:
+                info = f"{layer}_{identifier}"
+                fout.write(binascii.b2a_base64(info.encode()))
+                fout.write(binascii.b2a_base64(raw_bytes))
+            print(
+                f"Protocol Not Implemented - Layer: {layer}, identifier: {identifier}"
+            )
+            return Unknown("no protocol parser available", identifier, raw_bytes)
 
 
 Protocol_Parser = Parser()
