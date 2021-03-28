@@ -16,7 +16,9 @@ def ipv4_packets():
     ret = []
     for packet in load_file("raw_ipv4_output.lp"):
         out_packet = Packet_802_3(packet)
+        out = get_protocol(out_packet, IPv4)
 
+        ret.append(out.identifier == IPv4.identifier)
         ret.append(out_packet.ethertype == IPv4.identifier)
 
     for packet in load_file(("raw_ipv6_output.lp", "raw_arp_output.lp")):

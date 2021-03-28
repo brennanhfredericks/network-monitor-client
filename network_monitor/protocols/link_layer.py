@@ -57,11 +57,11 @@ class Packet_802_3(object):
         return self._raw_bytes
 
     def upper_layer(self):
-        return self._encap
+        return self.__encap
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
-        self._encap = Protocol_Parser.parse(
+        self.__encap = Protocol_Parser.parse(
             Layer_Protocols.Ethertype, self.ethertype, remaining_raw_bytes
         )
 
