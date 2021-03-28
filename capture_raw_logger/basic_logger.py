@@ -157,7 +157,7 @@ def log_tcp_packets(ifname, number):
                 out = get_protocol(out_packet, TCP)
 
                 if out is not None:
-                    print(out)
+
                     raw_packets.append(out.raw())
 
             if len(raw_packets) == number:
@@ -218,6 +218,8 @@ def log_udp_packets(ifname, number):
             fout.write(base64)
     print("finished with udp")
 
+
+# reduce to single function
 
 if __name__ == "__main__":
     # log_ipv4_packets("enp0s3", 100)

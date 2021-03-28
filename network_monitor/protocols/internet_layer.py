@@ -69,13 +69,17 @@ class IPv4(object):
 
         if self.IHL > 5:
             # raw bytes contains Option field data
-            pass
+            offset = 5 * self.IHL  # 8*4 24 bytes
+            raw_options = raw_bytes[20:offset]
+
+            self.__options(raw_options)
+            self.__parse_upper_layer_protocol(raw_bytes[offset:])
         else:
             self.__parse_upper_layer_protocol(raw_bytes[20:])
 
         self.__raw_bytes = raw_bytes
 
-    def _options(self, remaining_raw_bytes):
+    def __options(self, remaining_raw_bytes):
         """ used to parser Options flield """
         # Note: Copied, Option Class, and Option Number are sometimes referred to as a single eight-bit field, the Option Type.
 
@@ -87,11 +91,11 @@ class IPv4(object):
 
     def upper_layer(self):
 
-        return self._encap
+        return self.__encap
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
-        self._encap = Protocol_Parser.parse(
+        self.__encap = Protocol_Parser.parse(
             Layer_Protocols.IP_protocols, self.protocol, remaining_raw_bytes
         )
 
@@ -200,12 +204,12 @@ class IPv6(object):
         return self._raw_bytes
 
     def upper_layer(self):
-        return self._encap
+        return self.__encap
 
     def __parse_upper_layer_protocol(self, protocol, remaining_raw_bytes):
         # The values are shared with those used for the IPv4 protocol field
 
-        self._encap = Protocol_Parser.parse(
+        self.__encap = Protocol_Parser.parse(
             Layer_Protocols.IP_protocols, protocol, remaining_raw_bytes
         )
 
