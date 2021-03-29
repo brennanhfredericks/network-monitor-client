@@ -27,10 +27,11 @@ def ipv4_packets():
         "raw_protocols_1616955106_IPv4_IPv6.lp", log_dir="./remote_data"
     ):
 
-        print(packet)
-        # if packet.proto > 1500:
-        #     Packet_802_3(packet)
-        break
+        try:
+            out_data = Packet_802_3(packet)
+
+        except Exception as e:
+            print("error %s" % e)
 
 
 def test_ipv4_protocol():

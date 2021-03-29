@@ -70,21 +70,34 @@ class IPv4(object):
         if self.IHL > 5:
             # raw bytes contains Option field data
             offset = 5 * self.IHL  # 8*4 24 bytes
-            raw_options = raw_bytes[20:offset]
+            options = raw_bytes[20:offset]
 
-            self.__options(raw_options)
+            self.__parse_options(options)
             self.__parse_upper_layer_protocol(raw_bytes[offset:])
         else:
             self.__parse_upper_layer_protocol(raw_bytes[20:])
+            self.options = {}
 
         self.__raw_bytes = raw_bytes
 
-    def __options(self, remaining_raw_bytes):
+    def __parse_options(self, options: bytes):
         """ used to parser Options flield """
         # Note: Copied, Option Class, and Option Number are sometimes referred to as a single eight-bit field, the Option Type.
+        __ccn, __length = struct.unpack("! B B", options[:2])
+        __data = options[2:__length]
+        copied = __ccn >> 7
+        klass = (__ccn & 96) >> 5
+        number = __ccn & 31
+        self.options = {
+            "Copied": copied,
+            "Option Class": klass,
+            "Option Number": number,
+            "Option Data": __data,
+        }
+        print("ipv4 options: ", copied, klass, number)
 
         # The packet payload is not included in the checksum
-        print(f"Options field size: {len(remaining_raw_bytes)}")
+        # print(f"Options field size: {len(options)}")
 
     def raw(self):
         return self.__raw_bytes

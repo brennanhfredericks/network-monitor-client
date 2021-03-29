@@ -1,6 +1,7 @@
 import socket
 import struct
 import sys
+import binascii
 
 from dataclasses import dataclass
 from .protocol_utils import get_mac_addr
@@ -37,6 +38,53 @@ class AF_Packet(object):
 
 
 @dataclass
+class Packet_802_2(object):
+
+    description = "Ethernet 802.2 LLC Packet"
+    DSAP: str
+    SSAP: str
+    control: str
+    OUI: str
+    protocol_id: int
+
+    def __init__(self, raw_bytes):
+
+        # could be unpacking this wrong need to verify
+        # __dsap, __ssap, __ctl, __oi, __code = struct.unpack(
+        #     "! c c c 3s H", raw_bytes[:8]
+        # )
+
+        # alternative unpacking
+        __dsap, __ssap, __ctl, __oui, __code = struct.unpack(
+            "! c c 2s 3s H", raw_bytes[:9]
+        )
+
+        # 802.2 LLC Header
+        self.DSAP = binascii.b2a_hex(__dsap)
+        self.SSAP = binascii.b2a_hex(__ssap)
+        self.control = binascii.b2a_hex(__ctl)
+
+        # SNAP extension
+        self.OUI = binascii.b2a_hex(__oui)
+        self.protocol_id = __code
+
+        # store raw
+        self._raw_bytes = raw_bytes
+
+        self.__parse_upper_layer_protocol(raw_bytes[9:])
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        raise NotImplemented
+
+    def __parse_upper_layer_protocol(self, remaining_raw_bytes):
+        # not parser out, need to investigate futher
+        self.__encap = remaining_raw_bytes
+
+
+@dataclass
 class Packet_802_3(object):
     description = "Ethernet 802.3 Packet"
     dest_MAC: str
@@ -60,54 +108,9 @@ class Packet_802_3(object):
         return self.__encap
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
-
+        # hack for 802 test
+        if self.ethertype == 103:
+            print(Packet_802_2(remaining_raw_bytes))
         self.__encap = Protocol_Parser.parse(
             Layer_Protocols.Ethertype, self.ethertype, remaining_raw_bytes
         )
-
-
-@dataclass
-class Packet_802_2(object):
-
-    description = "Ethernet 802.2 LLC Packet"
-    DSAP: str
-    SSAP: str
-    control: str
-    OUI: str
-    protocol_id: int
-
-    def __init__(self, raw_bytes):
-
-        # could be unpacking this wrong need to verify
-        # __dsap, __ssap, __ctl, __oi, __code = struct.unpack(
-        #     "! c c c 3s H", raw_bytes[:8]
-        # )
-
-        # alternative unpacking
-        __dsap, __ssap, __ctl, __oi, __code = struct.unpack(
-            "! c c 2s 3s H", raw_bytes[:9]
-        )
-
-        # 802.2 LLC Header
-        self.DSAP = binascii.b2a_hex(__dsap)
-        self.SSAP = binascii.b2a_hex(__ssap)
-        self.control = binascii.b2a_hex(__ctl)
-
-        # SNAP extension
-        self.OUI = binascii.b2a_hex_(__oui)
-        self.protocol_id = __code
-
-        # store raw
-        self._raw_bytes = raw_bytes
-
-        self.__parse_upper_layer_protocol(raw_bytes[9:])
-
-    def raw(self):
-        return self._raw_bytes
-
-    def upper_layer(self):
-        raise NotImplemented
-
-    def __parse_upper_layer_protocol(self, remaining_raw_bytes):
-        # not parser out, need to investigate futher
-        self.__encap = remaining_raw_bytes
