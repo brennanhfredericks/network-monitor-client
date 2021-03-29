@@ -1,5 +1,6 @@
 import sys
 import struct
+import binascii
 from dataclasses import dataclass
 
 
@@ -358,7 +359,7 @@ class ICMPv6(object):
         self.type_ = __tp
         self.code = __cd
         self.checksum = __chk
-        self.message = __msg.decode("latin-1")
+        self.message = binascii.b2a_base64(__msg, newline=False).decode("utf-8")
         self._raw_bytes = raw_bytes
 
     def raw(self):

@@ -4,6 +4,7 @@
     - add logging
     - need to implement test cases for advance logger
     - remove hack in 802.3 __parse_upper_layer_protocol to test 802.2 packets
+    - 
     - 802.2 Packet
       - only implemented SNAP Extension for Individual LSAP addresses
     - IPv4 outstanding functionality:
@@ -15,6 +16,7 @@
         extension headers is part of IP protocol numbers. need specific list of extension headers to stop while loop extraction
     - ICMP outstanding functionality
       - implement checksum to compare values
+      - need to test
       - implement parser to decode different control message,
     - ICMPv6 outstanding functionality
       -  implement checksum to compare values
