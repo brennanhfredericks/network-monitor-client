@@ -22,18 +22,24 @@ from test_load_data import load_file
 
 def ipv4_packets():
     """ test ipv4 parsing """
-
+    res = []
     for packet in load_file(
         "raw_protocols_1616955106_IPv4_IPv6.lp", log_dir="./remote_data"
     ):
 
-        try:
-            out_data = Packet_802_3(packet)
+        out_packet = Packet_802_3(packet)
 
-        except Exception as e:
-            print("error %s" % e)
+        out_proto = get_protocol(out_packet, IPv4)
+
+        if out_proto is None:
+            continue
+
+        else:
+            res.append(out_proto.identifier == IPv4.identifier)
+
+    return res
 
 
 def test_ipv4_protocol():
 
-    assert ipv4_packets() == False
+    assert all(ipv4_packets()) == True
