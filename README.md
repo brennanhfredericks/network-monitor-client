@@ -3,6 +3,7 @@
 
     - add logging
     - need to implement test cases for advance logger
+    - remove hack in 802.3 __parse_upper_layer_protocol to test 802.2 packets
     - 802.2 Packet
       - only implemented SNAP Extension for Individual LSAP addresses
     - IPv4 outstanding functionality:

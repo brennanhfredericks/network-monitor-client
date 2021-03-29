@@ -54,10 +54,12 @@ Protocol_Parser = Parser()
 def register_parsers():
     from .internet_layer import get_internet_layer_parsers
     from .transport_layer import get_transport_layer_parsers
+    from .lsap_addresses import get_LLC_layer_parsers
 
     parsers = []
     parsers += get_internet_layer_parsers()
     parsers += get_transport_layer_parsers()
+    parsers += get_LLC_layer_parsers()
 
     for layer, identifier, protocol_parser in parsers:
         Protocol_Parser.register(layer, identifier, protocol_parser)
