@@ -44,29 +44,37 @@ class Packet_802_2(object):
     DSAP: str
     SSAP: str
     control: str
-    OUI: str
-    protocol_id: int
+    # OUI: str
+    # protocol_id: int
 
     def __init__(self, raw_bytes):
+        # https://en.wikipedia.org/wiki/IEEE_802.2
 
-        # could be unpacking this wrong need to verify
-        # __dsap, __ssap, __ctl, __oi, __code = struct.unpack(
-        #     "! c c c 3s H", raw_bytes[:8]
-        # )
+        # 802.2 LLC PDU
+        __dsap, __ssap, __ctl = struct.unpack("! B B B", raw_bytes[:3])
+        self.DSAP = __dsap
+        self.SSAP = __ssap
 
-        # alternative unpacking
-        __dsap, __ssap, __ctl, __oui, __code = struct.unpack(
-            "! c c 2s 3s H", raw_bytes[:9]
-        )
+        # check if control field is 8 bit or 16 bit
+        if __ctl & 3 == 3:
+            self.control = __ctl
+        else:
+            __ctl = struct.unpack("! x x H", raw_bytes[:4])
+            self.control = __ctl
 
-        # 802.2 LLC Header
-        self.DSAP = binascii.b2a_hex(__dsap)
-        self.SSAP = binascii.b2a_hex(__ssap)
-        self.control = binascii.b2a_hex(__ctl)
+        # DSAP
+        if self.DSAP & 1 == 0:
+            # if lower-order bit is 0 - individual address
+            # there are mulitple individual LSAP addresses
+
+            ...
+        else:
+            # if lower-order bit is 1 - group address
+            ...
 
         # SNAP extension
-        self.OUI = binascii.b2a_hex(__oui)
-        self.protocol_id = __code
+        # self.OUI = binascii.b2a_hex(__oui)
+        # self.protocol_id = __code
 
         # store raw
         self._raw_bytes = raw_bytes
@@ -81,7 +89,8 @@ class Packet_802_2(object):
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
         # not parser out, need to investigate futher
-        self.__encap = remaining_raw_bytes
+        print(remaining_raw_bytes)
+        # self.__encap = remaining_raw_bytes
 
 
 @dataclass

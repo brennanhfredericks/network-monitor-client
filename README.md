@@ -4,7 +4,7 @@
     - add logging
     - need to implement test cases for advance logger
     - 802.2 Packet
-      - need to investigate IEEE 802.2 packet upper layer data and parser it out if possible. confirm parsing
+      - only implemented SNAP Extension for Individual LSAP addresses
     - IPv4 outstanding functionality:
       - implement header checksum comparison
       - implement options field extraction when IHL is bigger than 5
