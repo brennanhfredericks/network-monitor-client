@@ -2,7 +2,7 @@
 # TODO
 
     - add logging
-    - need to implement test cases for advance logger, update logger to remove hack
+    - need to implement test cases for advance logger, logger updated to log AF_Packet as well
     - remove hack in 802.3 __parse_upper_layer_protocol to test 802.2 packets
     - 
     - 802.2 Packet
@@ -34,18 +34,19 @@
       - ethernet interface origin
       - 802.3 packet
         - ethertypes
-          - between 0 and 1500: encapsulation of 802.2 Packet. could be wrong need to confirm
           - 2048: Internet Protocol version 4 (IPv4)
           - 2054: Address Resolution Protocol (ARP)
+          - 34525: Internet Protocol Version 6 (IPv6)
           - 8192: Cisco Discovery Protocol
           - 35020: Link Layer Discovery Protocol
         
-        - ipv4 protocols
+        - ip protocols
           - 1: Internet Control Message Protocol (ICMP)
           - 2: Internet Group Message Protocol (IGMP)
           - 6: Transmission Control Protocol (TCP)
           - 17: User Datagram Protocol (UDP)
           - 58: Internet Control Message Protocol for IPv6 (ICMPv6)
+          - 
 
 ## Command Line
     - basic command line interface to start the network-monitor with the following argument options
