@@ -29,9 +29,9 @@ def ipv4_packets():
     for packet in load_file(
         [
             "raw_protocols_1616955106_IPv4_IPv6.lp",
-            # "raw_protocols_1616954194_TCP_UDP.lp",
-            # "raw_protocols_1616954194_TCP_UDP.lp",
-            # "raw_protocols_1616954194_TCP_UDP.lp",
+            "raw_protocols_1616954194_TCP_UDP.lp",
+            "raw_protocols_1616954194_TCP_UDP.lp",
+            "raw_protocols_1616954194_TCP_UDP.lp",
         ],
         log_dir="./remote_data",
     ):
@@ -44,7 +44,7 @@ def ipv4_packets():
             continue
 
         else:
-            res.append(out_proto.identifier != IPv4.identifier)
+            res.append(out_proto.identifier == IPv4.identifier)
 
     return res
 
@@ -58,7 +58,13 @@ def ipv6_packets():
     """ test ipv6 parsing """
     res = []
     for packet in load_file(
-        "raw_protocols_1616955106_IPv4_IPv6.lp", log_dir="./remote_data"
+        [
+            "raw_protocols_1616955106_IPv4_IPv6.lp",
+            "raw_protocols_1616954194_TCP_UDP.lp",
+            "raw_protocols_1616954194_TCP_UDP.lp",
+            "raw_protocols_1616954194_TCP_UDP.lp",
+        ],
+        log_dir="./remote_data",
     ):
 
         out_packet = Packet_802_3(packet)
@@ -69,7 +75,6 @@ def ipv6_packets():
             continue
 
         else:
-
             res.append(out_proto.identifier == IPv6.identifier)
 
     return res

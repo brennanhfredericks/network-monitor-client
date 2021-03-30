@@ -112,12 +112,14 @@ class UDP(object):
         self._raw_bytes = raw_bytes
         # payload data probabily encrypted
         # should be based on length field, This field specifies the length in bytes of the UDP header and UDP data.
+        # print(self.length, len(self._raw_bytes))
         self._payload = raw_bytes[8:]
 
     def raw(self):
         return self._raw_bytes
 
     def upper_layer(self):
+
         return None
 
 

@@ -4,7 +4,13 @@ import binascii
 from dataclasses import dataclass
 
 
-from .protocol_utils import get_ipv4_addr, get_ipv6_addr, get_mac_addr, grouper
+from .protocol_utils import (
+    get_ipv4_addr,
+    get_ipv6_addr,
+    get_mac_addr,
+    grouper,
+    ones_comp_add16,
+)
 
 from .parsers import Protocol_Parser
 from .layer import Layer_Protocols
@@ -33,7 +39,7 @@ class IPv4(object):
     destination_address: str
 
     def __init__(self, raw_bytes):
-        self.__verify_checksum(raw_bytes[:20])
+
         (
             __vihl,
             __dsen,
@@ -51,6 +57,7 @@ class IPv4(object):
         self.version = __vihl >> 4
 
         self.IHL = __vihl & 15
+        self.__verify_checksum(raw_bytes[: self.IHL * 4])
         self.DSCP = (__dsen & 252) >> 2
         self.ECN = __dsen & 3
         self.total_length = __tl
@@ -79,18 +86,37 @@ class IPv4(object):
             self.options = {}
 
         self.__raw_bytes = raw_bytes
-        print("checksum: ", self.header_checksum)
 
-    def __verify_checksum(self, options: bytes):
+    def __verify_checksum(self, raw_bytes_header: bytes):
         """ verify checksum is correct """
-        # (options,) = struct.unpack("! 20s", options)
-        options = bytearray(options)
 
-        for i, b in enumerate(grouper(options, 2)):
+        # https://www.thegeekstuff.com/2012/05/ip-header-checksum/
+        checksum = 0
+        read_checksum = 0
+        int16s = []
+        (raw_bytes_header,) = struct.unpack(
+            f"! {len(raw_bytes_header)}s", raw_bytes_header
+        )
+        for i, (high, low) in enumerate(grouper(raw_bytes_header, 2, fillvalue=0)):
+
             if i == 5:
-                print("0: ", b)
+                read_checksum = own = f"{(high << 8)+low:x}"
+                read_checksum = int(read_checksum, 16)
+
+                int16s.append(0)
+                # print(f"0x{int16:04x} ", end="")
+
             else:
-                print(b)
+                own = f"{(high << 8)+low:x}"
+                int16 = int(own, 16)
+                int16s.append(int16)
+                # print(f"0x{int16:x} ", end="")
+        checksum = int16s[0]
+        for i in range(1, len(int16s)):
+            checksum = ones_comp_add16(checksum, int16s[i])
+        # print(f" result: {checksum}")
+
+    # print(f"0x{raw_bytes_header:2x}")
 
     def __parse_options(self, options: bytes):
         """ used to parser Options flield """
@@ -183,7 +209,8 @@ class IPv6(object):
     description = "Internet Protocol Version 6"
     identifier = 34525
     version: int
-    traffic_class: int
+    DS: int
+    ECN: int
     flow_label: int
     payload_length: int
     next_header: int
@@ -201,7 +228,10 @@ class IPv6(object):
 
         # index first byte
         self.version = __vtf[0] >> 4
-        self.traffic_class = (int.from_bytes(__vtf[:2], sys.byteorder) & 2040) >> 4
+        traffic_class = (int.from_bytes(__vtf[:2], sys.byteorder) & 2040) >> 4
+        self.DS = traffic_class & 252
+        self.ECN = traffic_class & 3
+
         self.flow_label = int.from_bytes(__vtf[1:4], sys.byteorder) & 1048575
         self.payload_length = __pl_len
         self.next_header = __next_h

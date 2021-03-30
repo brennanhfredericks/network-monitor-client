@@ -28,6 +28,28 @@ def grouper(iterable, n, fillvalue=None):
     return zip_longest(*args, fillvalue=fillvalue)
 
 
+# from https://stackoverflow.com/questions/3949726/calculate-ip-checksum-in-python
+# def carry_around_add(a, b):
+#     c = a + b
+#     return (c & 0xFFFF) + (c >> 16)
+
+
+# def verify_checksum(msg):
+#     s = 0
+#     for i in range(0, len(msg), 2):
+#         w = ord(msg[i]) + (ord(msg[i + 1]) << 8)
+#         s = carry_around_add(s, w)
+#     return ~s & 0xFFFF
+
+# https://stackoverflow.com/questions/29842280/python16-bit-ones-complement-addition-implementation
+MOD = 1 << 16
+
+
+def ones_comp_add16(num1, num2):
+    result = num1 + num2
+    return result if result < MOD else (result + 1) % MOD
+
+
 @dataclass
 class Unknown(object):
     description = "Unknown Protocol"

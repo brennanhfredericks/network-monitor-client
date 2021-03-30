@@ -7,28 +7,23 @@
     - 
     - 802.2 Packet
       - only implemented SNAP Extension for Individual LSAP addresses
+      - 
     - IPv4 outstanding functionality:
       - implement header checksum comparison
     
     - IPv6 outstanding functionality:
-      - implement DS field and ECN field extraction from Traffic_Class
       - implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol
         extension headers is part of IP protocol numbers. need specific list of extension headers to stop while loop extraction
     - ICMP outstanding functionality
-      - implement checksum to compare values
-      - need to test
-      - implement parser to decode different control message,
+      - implement checksum verifier
     - ICMPv6 outstanding functionality
-      -  implement checksum to compare values
-      -  implement parser to decode different control message
+      -  implement checksum verifier
     - IGMP outstanding functionality
-      - implement checksum to compare values
-      - implement parser for message types
+      - implement checksum verifier
     - TCP outstanding functionality
-      - implement checksum to compare values
+      - implement checksum verifier
     - UDP outstanding functionality 
-      - implement checksum to compare values
-      - payload should be determined based length field value
+      - implement checksum verifier
       
 # Implemented
 
