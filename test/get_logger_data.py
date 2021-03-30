@@ -15,7 +15,7 @@ def download_file(file_url, fname):
 
     path = os.path.join("remote_data", fname)
 
-    with open(path, "wb") as fout:
+    with open(path, "w+b") as fout:
         fout.write(response.content)
 
     return fname

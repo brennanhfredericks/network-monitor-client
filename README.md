@@ -9,7 +9,7 @@
       - only implemented SNAP Extension for Individual LSAP addresses
     - IPv4 outstanding functionality:
       - implement header checksum comparison
-      - implement options field extraction when IHL is bigger than 5
+    
     - IPv6 outstanding functionality:
       - implement DS field and ECN field extraction from Traffic_Class
       - implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol

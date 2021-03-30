@@ -4,7 +4,7 @@ import binascii
 from dataclasses import dataclass
 
 
-from .protocol_utils import get_ipv4_addr, get_ipv6_addr, get_mac_addr
+from .protocol_utils import get_ipv4_addr, get_ipv6_addr, get_mac_addr, grouper
 
 from .parsers import Protocol_Parser
 from .layer import Layer_Protocols
@@ -31,10 +31,9 @@ class IPv4(object):
     header_checksum: int
     source_address: str
     destination_address: str
-    options: int = 0
 
     def __init__(self, raw_bytes):
-
+        self.__verify_checksum(raw_bytes[:20])
         (
             __vihl,
             __dsen,
@@ -80,6 +79,18 @@ class IPv4(object):
             self.options = {}
 
         self.__raw_bytes = raw_bytes
+        print("checksum: ", self.header_checksum)
+
+    def __verify_checksum(self, options: bytes):
+        """ verify checksum is correct """
+        # (options,) = struct.unpack("! 20s", options)
+        options = bytearray(options)
+
+        for i, b in enumerate(grouper(options, 2)):
+            if i == 5:
+                print("0: ", b)
+            else:
+                print(b)
 
     def __parse_options(self, options: bytes):
         """ used to parser Options flield """
@@ -95,10 +106,6 @@ class IPv4(object):
             "Option Number": number,
             "Option Data": __data,
         }
-        print("ipv4 options: ", copied, klass, number)
-
-        # The packet payload is not included in the checksum
-        # print(f"Options field size: {len(options)}")
 
     def raw(self):
         return self.__raw_bytes
@@ -390,7 +397,7 @@ class ICMP(object):
         self.checksum = __chk
 
         # implement parser to decode control messages
-        self.message = __msg
+        self.message = binascii.b2a_base64(__msg, newline=False).decode("utf-8")
 
         self._raw_bytes = raw_bytes
 

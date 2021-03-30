@@ -29,7 +29,7 @@ from network_monitor.protocols import (
 )
 from network_monitor.filters import get_protocol, present_protocols
 
-
+# write to tmp file and replace with os.replace
 def log_packets_based_on_protocols(
     ifname: str,
     proto_list: list,

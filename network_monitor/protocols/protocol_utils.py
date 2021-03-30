@@ -1,6 +1,6 @@
 import binascii
 import struct
-
+from itertools import zip_longest
 from dataclasses import dataclass
 
 
@@ -19,6 +19,13 @@ def get_ipv6_addr(addr):
         for x in struct.unpack("! 2s 2s 2s 2s 2s 2s 2s 2s", addr)
     ]
     return ":".join(addr_str)
+
+
+def grouper(iterable, n, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * n
+    return zip_longest(*args, fillvalue=fillvalue)
 
 
 @dataclass
