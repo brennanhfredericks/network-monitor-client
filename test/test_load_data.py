@@ -3,7 +3,6 @@ import os
 from collections.abc import Iterable
 import pytest
 
-DIR = "./data"
 
 # should support path, str
 def load_file(filename, log_dir="./data"):
@@ -61,3 +60,36 @@ def test_load_file_list_fail():
 def test_load_file_tuple_fail():
 
     load_file(("raw_ipv4_output.lp", "raw_ipv6_output.lp", 1))
+
+
+def load_unknown_file(filename, log_dir="./data"):
+    """load raw unknown packets"""
+    path = None
+    if isinstance(filename, str):
+        path = os.path.join(log_dir, filename)
+        if not os.path.exists(path):
+            raise ValueError(f"{path} doesn't exists")
+        path = [path]
+    elif isinstance(filename, Iterable):
+        path = []
+        for f in filename:
+            path_ = os.path.join(log_dir, f)
+            if not os.path.exists(path_):
+                raise ValueError(f"{path_} doesn't exists")
+            path.append(path_)
+    else:
+        raise ValueError("only support str and Interable(str)")
+
+    for p in path:
+        with open(p, "rb") as fin:
+            while True:
+                info = fin.readline()
+                if len(info) == 0:
+                    break
+                info = binascii.a2b_base64(info)
+
+                info = info.decode("utf-8").split("_")
+                packet = binascii.a2b_base64(fin.readline())
+                layer_protocol, identifier = "_".join(info[:2]), info[-1]
+
+                yield layer_protocol, identifier, packet

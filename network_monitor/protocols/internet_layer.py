@@ -351,6 +351,47 @@ collect_protocols.append((Layer_Protocols.Ethertype, 8192, CDP))
 
 
 @dataclass
+class LLDP(object):
+
+    description = "35020 IEEE Std 802.1AB - Link Layer Discovery Protocol"
+    identifier = 35020
+    tlvs: list
+
+    def __init__(self, raw_bytes):
+
+        #
+        tlv_dict, r_bytes = self.__parse_tlv(raw_bytes)
+        self.tlvs = [tlv_dict]
+        while tlv_dict["Type"] != 0:
+            tlv_dict, r_bytes = self.__parse_tlv(r_bytes)
+
+            self.tlvs.append(tlv_dict)
+
+        self._raw_bytes = raw_bytes
+
+    def __parse_tlv(self, raw_bytes):
+        (__tl,) = struct.unpack("! H", raw_bytes[:2])
+        type_ = (__tl & 0b1111111000000000) >> 9
+        length = __tl & 0b111111111
+        value = raw_bytes[2:length]
+
+        return {
+            "Type": type_,
+            "Length": length,
+            "Value": value,
+        }, raw_bytes[length:]
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return None
+
+
+collect_protocols.append((Layer_Protocols.Ethertype, 35020, LLDP))
+
+
+@dataclass
 class IGMP(object):
 
     description = "Internet Group Management Protocol"

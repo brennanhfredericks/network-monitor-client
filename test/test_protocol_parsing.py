@@ -18,9 +18,10 @@ from network_monitor.protocols import (
     ICMP,
     ICMPv6,
     IGMP,
+    LLDP,
 )
 from network_monitor.filters import get_protocol
-from test_load_data import load_file
+from test_load_data import load_file, load_unknown_file
 
 
 def ipv4_packets():
@@ -244,3 +245,35 @@ def igmp_packets():
 def test_igmp_protocol():
 
     assert all(igmp_packets()) == True
+
+
+def unknown_packets():
+    """ test unknown parsing """
+    res = []
+    # load_unknown_file("raw_unknown_protocols_1617059887.lp", log_dir="./remote_data")
+
+    for layer_protocol, identifier, packet in load_unknown_file(
+        [
+            "raw_unknown_protocols_1616954194.lp",
+            "raw_unknown_protocols_1616954635.lp",
+            "raw_unknown_protocols_1616954635.lp",
+            "raw_unknown_protocols_1616955371.lp",
+            "raw_unknown_protocols_1617059887.lp",
+        ],
+        log_dir="./remote_data",
+    ):
+
+        out_proto = LLDP(packet)
+        res.append(out_proto.identifier == LLDP.identifier)
+
+    return res
+
+
+def test_unknown_protocol():
+
+    assert all(unknown_packets()) == True
+
+
+if __name__ == "__main__":
+
+    exit(test_unknown_protocol())

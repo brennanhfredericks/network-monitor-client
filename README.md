@@ -2,7 +2,7 @@
 # TODO
 
     - add logging
-    - need to implement test cases for advance logger
+    - need to implement test cases for advance logger, update logger to remove hack
     - remove hack in 802.3 __parse_upper_layer_protocol to test 802.2 packets
     - 
     - 802.2 Packet
@@ -37,6 +37,8 @@
           - between 0 and 1500: encapsulation of 802.2 Packet. could be wrong need to confirm
           - 2048: Internet Protocol version 4 (IPv4)
           - 2054: Address Resolution Protocol (ARP)
+          - 8192: Cisco Discovery Protocol
+          - 35020: Link Layer Discovery Protocol
         
         - ipv4 protocols
           - 1: Internet Control Message Protocol (ICMP)
