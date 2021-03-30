@@ -2,6 +2,8 @@ import socket
 import struct
 import sys
 import binascii
+import json
+import base64
 
 from dataclasses import dataclass
 from .protocol_utils import get_mac_addr
@@ -35,6 +37,18 @@ class AF_Packet(object):
         self.pkttype = PKTTYPE_LOOKUP[address[2]]
         self.hatype = address[3]
         self.hwaddr = get_mac_addr(address[4])
+
+    def serialize(self):
+        ret = {
+            "ifname": self.ifname,
+            "protocol": self.proto,
+            "packet type": self.pkttype,
+            "hatype": self.hatype,
+            "hwadddr": self.hwaddr,
+        }
+        ret = base64.b64encode(json.dumps(ret).encode("utf-8"))
+
+        return ret
 
 
 @dataclass

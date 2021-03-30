@@ -5,6 +5,7 @@ sys.path.insert(0, "../")
 import queue
 import threading
 import binascii
+
 import os
 import time
 import signal
@@ -26,6 +27,8 @@ from network_monitor.protocols import (
     IPv4,
     IPv6,
     ARP,
+    LLDP,
+    CDP,
 )
 from network_monitor.filters import get_protocol, present_protocols
 
@@ -54,7 +57,7 @@ def log_packets_based_on_protocols(
         create name for file
         raw_protocols_1548866456123_ARP_IPv4_IPv6_ICMP.lp"""
 
-        fname = f"raw_protocols_{start_time}"
+        fname = f"raw2_protocols_{start_time}"
 
         for proto_cls in proto_list:
             fname += f"_{proto_cls.__name__}"
@@ -87,7 +90,7 @@ def log_packets_based_on_protocols(
                 raw_bytes, address = input_queue.get()
 
                 af_packet = AF_Packet(address)
-
+                fout.write(af_packet.serialize())
                 if af_packet.proto > 1500:
                     out_packet = Packet_802_3(raw_bytes)
                     write_packet = False
@@ -122,4 +125,8 @@ if __name__ == "__main__":
 
     # log_packets_based_on_protocols("br0", [TCP, UDP], min_number=100)
     # log_packets_based_on_protocols("br0", [IPv4, IPv6], min_number=100)
-    log_packets_based_on_protocols("br0", [ARP, ICMP, ICMPv6, IGMP], min_number=50)
+    log_packets_based_on_protocols(
+        "br0",
+        [IPv4, IPv6, UDP, TCP, ARP, ICMP, ICMPv6, IGMP, LLDP, CDP],
+        min_number=10,
+    )
