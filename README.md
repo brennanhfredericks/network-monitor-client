@@ -1,11 +1,12 @@
 
 # TODO
 
-  - add logging
+  - Add logging
   - need to implement test cases for advance logger, logger updated to log AF_Packet as well
   - remove hack in 802.3 __parse_upper_layer_protocol to test 802.2 packets
-  - add functionality to follow TCP stream
-  - replace binascii with base64 module, base64 adds padding to align bytes
+  - Add functionality to follow TCP stream
+  - Packet_Submitter
+    - make post functionality asynchronous, to avoid blocking
   - 802.2 Packet
     - only implemented SNAP Extension for Individual LSAP addresses
     - 

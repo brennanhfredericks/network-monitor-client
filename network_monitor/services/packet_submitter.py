@@ -2,20 +2,54 @@ import queue
 import threading
 import time
 import requests
+import os
+import base64
+from io import StringIO
 
 from network_monitor.filters import flatten_protocols
+
+
+class Submitter(object):
+    """ responsible for submitting data and retrying  """
+
+    def __init__(self, url: str, log_dir, n_buffer: int = 50, re_try_interval=60 * 5):
+
+        self.url = url
+
+        # check
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        else:
+            # check if files in directory. if files process and send to server
+            out_files = os.listdir(log_dir)
+            if len(out_files) > 0:
+                # process existing files
+                ...
+        self.log_dir = log_dir
+
+        self.out_file = f"out_{int(time.time())}.lsp"
+
+        self.n_buffer = n_buffer
+        self._buffer = StringIO()
+
+    # submit data to server asynchronously
+
+    # write data to buffer
 
 
 class Packet_Submitter(object):
     """ class for storing and submitting packets"""
 
     def __init__(
-        self, output_queue: queue.Queue, url: str = "http://192.168.88.52/packets"
+        self,
+        output_queue: queue.Queue,
+        url: str = "http://192.168.88.52/packets",
+        log_dir="./logger_output/submitter/",
     ):
         self._data_queue = output_queue
-        self._url = url
+        self._submitter = Submitter(url, log_dir)
 
-    def _submitter(self):
+    def _submit(self):
         re_try_timer = 60
         while self._sentinal or not self._data_queue.empty():
 

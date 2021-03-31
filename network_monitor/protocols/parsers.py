@@ -11,7 +11,7 @@ class Parser:
 
     __protocol_parsers = {}
 
-    def __init__(self, log_dir="./logger_output"):
+    def __init__(self, log_dir="./logger_output/unknown_protocols/"):
 
         # init layer protocols
         for layer_protocol in Layer_Protocols:
