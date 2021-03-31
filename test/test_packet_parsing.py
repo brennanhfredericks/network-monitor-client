@@ -16,7 +16,7 @@ from network_monitor.protocols import (
     IPv6,
     Packet_802_2,
 )
-from network_monitor.filters import get_protocol
+from network_monitor.filters import get_protocol, present_protocols
 from test_load_data import load_file, load_filev2
 
 # content of
@@ -146,19 +146,18 @@ def any_packets():
     ret = []
 
     for af_packet, packet in load_filev2(
-        "raw2_protocols_1617197402_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
+        "raw2_protocols_1617213286_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
         log_dir="./remote_data",
     ):
-        print(len(packet))
+
         if af_packet["protocol"] > 1500:
             out = Packet_802_3(packet)
         else:
             out = Packet_802_2(packet)
+        out_protos = present_protocols(out)
 
-        print(out)
-        break
+        assert isinstance(out_protos, list) and len(out_protos) > 0
 
 
 def test_any_packet():
     any_packets()
-    assert False

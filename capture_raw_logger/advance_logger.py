@@ -5,6 +5,7 @@ sys.path.insert(0, "../")
 import queue
 import threading
 import base64
+import binascii
 
 import os
 import time
@@ -39,7 +40,6 @@ def log_packets_based_on_protocols(
     min_number: int = 5,
     log_dir="./logger_output",
     report_interval: int = 5,
-    log_802_2=True,
 ):
     start_time = int(time.time())
     service_manager = Service_Manager(ifname)
@@ -82,7 +82,7 @@ def log_packets_based_on_protocols(
 
     waitfor = True
     last_report_time = time.time()
-    with open(os.path.join(log_dir, fname), "wb") as fout:
+    with open(os.path.join(log_dir, fname), "w") as fout:
         while waitfor:
 
             if not input_queue.empty():
@@ -90,7 +90,8 @@ def log_packets_based_on_protocols(
                 raw_bytes, address = input_queue.get()
 
                 af_packet = AF_Packet(address)
-                fout.write(af_packet.serialize_to_bytes())
+
+                fout.write(af_packet.serialize() + "\n")
                 if af_packet.proto > 1500:
                     out_packet = Packet_802_3(raw_bytes)
                     write_packet = False
@@ -102,18 +103,19 @@ def log_packets_based_on_protocols(
                     if write_packet:
 
                         __tracker = {k: v for k, v in tracker.items()}
-                        fout.write(base64.b64encode(raw_bytes))
-                        fout.write(b"\n")
+
+                        r_raw_bytes = base64.b64encode(raw_bytes).decode("utf-8")
+
+                        fout.write(r_raw_bytes + "\n")
+
                         now = time.time()
                         if now - last_report_time > report_interval:
                             last_report_time = now
 
                             print(f"Tracker: {__tracker}")
                 else:
-
-                    if log_802_2:
-                        # log in a seperate file to avoid hack for testing purposes
-                        fout.write(base64.b64encode(raw_bytes))
+                    r_raw_bytes = base64.b64encode(raw_bytes).decode("utf-8")
+                    fout.write(r_raw_bytes + "\n")
 
                 if all(map(lambda x: x >= min_number, tracker.values())):
                     waitfor = False

@@ -26,13 +26,12 @@ def load_filev2(filename, log_dir="./data"):
         raise ValueError("only support str and Interable(str)")
 
     for p in path:
-        with open(p, "rb") as fin:
+        with open(p, "r") as fin:
             while True:
                 af_packet = fin.readline()
                 if len(af_packet) == 0:
                     break
-                af_packet = base64.b64decode(af_packet).decode("utf-8")
-
+                af_packet = base64.b64decode(af_packet)
                 packet = base64.b64decode(fin.readline())
 
                 yield json.loads(af_packet), packet
