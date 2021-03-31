@@ -11,6 +11,20 @@ def get_protocol(out_packet, cls):
     return out
 
 
+def flatten_protocols(out_packet):
+    """ return present protocols as list """
+    protocols = []
+    out = out_packet
+    loop = True
+    while loop:
+        out = out.upper_layer()
+        if out is not None:
+            protocols.append(out)
+        else:
+            loop = False
+    return protocols
+
+
 def present_protocols(out_packet):
     """ return identifier of all protocols present in the packet as """
 

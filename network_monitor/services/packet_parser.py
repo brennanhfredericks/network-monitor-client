@@ -33,6 +33,8 @@ class Packet_Parser(object):
                     # check whether WIFI packets are different from ethernet packets
                     out_packet = Packet_802_3(raw_bytes)
 
+                self._output_queue.put(out_packet)
+
             else:
                 # sleep for 100ms
                 time.sleep(0.1)

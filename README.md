@@ -1,30 +1,38 @@
 
 # TODO
 
-    - add logging
-    - need to implement test cases for advance logger, logger updated to log AF_Packet as well
-    - remove hack in 802.3 __parse_upper_layer_protocol to test 802.2 packets
+  - add logging
+  - need to implement test cases for advance logger, logger updated to log AF_Packet as well
+  - remove hack in 802.3 __parse_upper_layer_protocol to test 802.2 packets
+  - add functionality to follow TCP stream
+  - replace binascii with base64 module, base64 adds padding to align bytes
+  - 802.2 Packet
+    - only implemented SNAP Extension for Individual LSAP addresses
     - 
-    - 802.2 Packet
-      - only implemented SNAP Extension for Individual LSAP addresses
-      - 
-    - IPv4 outstanding functionality:
-      - implement header checksum comparison
-    
-    - IPv6 outstanding functionality:
-      - implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol
-        extension headers is part of IP protocol numbers. need specific list of extension headers to stop while loop extraction
-    - ICMP outstanding functionality
-      - implement checksum verifier
-    - ICMPv6 outstanding functionality
-      -  implement checksum verifier
-    - IGMP outstanding functionality
-      - implement checksum verifier
-    - TCP outstanding functionality
-      - implement checksum verifier
-    - UDP outstanding functionality 
-      - implement checksum verifier
-      
+  - IPv4 outstanding functionality:
+    - implement header checksum comparison
+  
+  - IPv6 outstanding functionality:
+    - implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol
+      extension headers is part of IP protocol numbers. need specific list of extension headers to stop while loop extraction
+  - ICMP outstanding functionality
+    - implement checksum verifier
+  - ICMPv6 outstanding functionality
+    -  implement checksum verifier
+  - IGMP outstanding functionality
+    - implement checksum verifier
+  - TCP outstanding functionality
+    - implement checksum verifier
+  - UDP outstanding functionality 
+    - implement checksum verifier
+
+# Outstanding
+  - Packet Submitter
+    - use to send data monitor server api
+    - if monitor server not available buffer data into queue (to reduce write operation) and write file or insert into sqlite database
+      - periodically check if server is available, if available send store data and clear sqlite database
+
+
 # Implemented
 
     - Network Listerner

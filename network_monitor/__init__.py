@@ -5,7 +5,12 @@ import queue
 import signal
 import time
 
-from .services import Service_Manager, Packet_Parser, Interface_Listener
+from .services import (
+    Service_Manager,
+    Packet_Parser,
+    Interface_Listener,
+    Packet_Submitter,
+)
 
 
 def default_start(args):
@@ -25,6 +30,10 @@ def default_start(args):
         # start packet parser
         packet_parser = Packet_Parser(input_queue, output_queue)
         service_manager.start_service("packet parser", packet_parser)
+
+        # start packet submitter
+        packet_submitter = Packet_Submitter(output_queue)
+        service_manager.start_service("packet submitter", packet_submitter)
 
     else:
         if args.list_gateways:
