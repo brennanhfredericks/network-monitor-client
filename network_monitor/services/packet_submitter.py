@@ -22,7 +22,9 @@ class Packet_Submitter(object):
                 f_protocols = flatten_protocols(out_packet)
 
                 # format data for post request
-                print(f_protocols)
+                # for f in f_protocols:
+                #     print(f)
+                #     print(f.serialize())
 
                 # try post quest
 

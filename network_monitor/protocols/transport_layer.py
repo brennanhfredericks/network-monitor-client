@@ -1,7 +1,10 @@
 import struct
 import sys
+import json
+import base64
 from dataclasses import dataclass
 from .layer import Layer_Protocols
+from .protocol_utils import EnhancedJSONEncoder
 
 collect_protocols = []  # (level,identifier,parser)
 
@@ -75,7 +78,7 @@ class TCP(object):
         self.options = {
             "Option-Kind": __kind,
             "Option-Length": __length,
-            "Option-Data": __data,
+            "Option-Data": base64.b64encode(__data).decode("utf-8"),
         }
 
     def raw(self):
@@ -83,6 +86,9 @@ class TCP(object):
 
     def upper_layer(self):
         return None
+
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 6, TCP))
@@ -121,6 +127,9 @@ class UDP(object):
     def upper_layer(self):
 
         return None
+
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 17, UDP))

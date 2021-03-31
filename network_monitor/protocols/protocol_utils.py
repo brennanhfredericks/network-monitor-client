@@ -1,7 +1,8 @@
 import binascii
 import struct
 from itertools import zip_longest
-from dataclasses import dataclass
+import dataclasses
+import json
 
 
 def get_ipv4_addr(addr):
@@ -50,7 +51,7 @@ def ones_comp_add16(num1, num2):
     return result if result < MOD else (result + 1) % MOD
 
 
-@dataclass
+@dataclasses.dataclass
 class Unknown(object):
     description = "Unknown Protocol"
     message: str
@@ -69,3 +70,11 @@ class Unknown(object):
     def upper_layer(self):
 
         return None
+
+
+# https://stackoverflow.com/a/51286749
+class EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        return super().default(o)

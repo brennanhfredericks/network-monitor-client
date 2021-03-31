@@ -1,6 +1,7 @@
 import sys
 import struct
-import binascii
+import base64
+import json
 from dataclasses import dataclass
 
 
@@ -10,6 +11,7 @@ from .protocol_utils import (
     get_mac_addr,
     grouper,
     ones_comp_add16,
+    EnhancedJSONEncoder,
 )
 
 from .parsers import Protocol_Parser
@@ -140,6 +142,9 @@ class IPv4(object):
 
         return self.__encap
 
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
+
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
         self.__encap = Protocol_Parser.parse(
@@ -257,6 +262,9 @@ class IPv6(object):
     def upper_layer(self):
         return self.__encap
 
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
+
     def __parse_upper_layer_protocol(self, protocol, remaining_raw_bytes):
         # The values are shared with those used for the IPv4 protocol field
 
@@ -314,6 +322,9 @@ class ARP(object):
     def upper_layer(self):
         return None
 
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
+
     def _decode_protocol_addr(self, proto_addr):
 
         if self.PTYPE == 2048:
@@ -342,6 +353,9 @@ class CDP(object):
 
     def raw(self):
         return self._raw_bytes
+
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
 
     def upper_layer(self):
         return None
@@ -387,6 +401,9 @@ class LLDP(object):
     def upper_layer(self):
         return None
 
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
+
 
 collect_protocols.append((Layer_Protocols.Ethertype, 35020, LLDP))
 
@@ -418,6 +435,9 @@ class IGMP(object):
     def upper_layer(self):
         return None
 
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
+
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 2, IGMP))
 
@@ -437,7 +457,7 @@ class ICMPv6(object):
         self.type_ = __tp
         self.code = __cd
         self.checksum = __chk
-        self.message = binascii.b2a_base64(__msg, newline=False).decode("utf-8")
+        self.message = base64.b64encode(__msg).decode("utf-8")
         self._raw_bytes = raw_bytes
 
     def raw(self):
@@ -445,6 +465,9 @@ class ICMPv6(object):
 
     def upper_layer(self):
         return None
+
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 58, ICMPv6))
@@ -468,8 +491,7 @@ class ICMP(object):
         self.checksum = __chk
 
         # implement parser to decode control messages
-        self.message = binascii.b2a_base64(__msg, newline=False).decode("utf-8")
-
+        self.message = base64.b64encode(__msg).decode("utf-8")
         self._raw_bytes = raw_bytes
 
     def raw(self):
@@ -477,6 +499,9 @@ class ICMP(object):
 
     def upper_layer(self):
         return None
+
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 1, ICMP))

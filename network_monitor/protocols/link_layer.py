@@ -1,12 +1,12 @@
 import socket
 import struct
 import sys
-import binascii
+
 import json
 import base64
 
 from dataclasses import dataclass
-from .protocol_utils import get_mac_addr
+from .protocol_utils import get_mac_addr, EnhancedJSONEncoder
 from .layer import Layer_Protocols
 from .parsers import Protocol_Parser
 
@@ -46,7 +46,7 @@ class AF_Packet(object):
             "hatype": self.hatype,
             "hwadddr": self.hwaddr,
         }
-        ret = base64.b64encode(json.dumps(ret).encode("utf-8"))
+        ret = base64.b64encode(json.dumps(ret).encode("utf-8")).decode("utf-8")
 
         return ret
 
@@ -105,6 +105,9 @@ class Packet_802_2(object):
 
         return self.__encap
 
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
+
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
         self.__encap = Protocol_Parser.parse(
@@ -134,6 +137,9 @@ class Packet_802_3(object):
 
     def upper_layer(self):
         return self.__encap
+
+    def serialize(self):
+        return json.dumps(self, cls=EnhancedJSONEncoder)
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
         # hack for 802 test
