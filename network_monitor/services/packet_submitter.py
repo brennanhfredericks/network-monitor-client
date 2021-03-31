@@ -1,6 +1,7 @@
 import queue
 import threading
 import time
+import requests
 
 from network_monitor.filters import flatten_protocols
 
@@ -8,8 +9,11 @@ from network_monitor.filters import flatten_protocols
 class Packet_Submitter(object):
     """ class for storing and submitting packets"""
 
-    def __init__(self, output_queue: queue.Queue):
+    def __init__(
+        self, output_queue: queue.Queue, url: str = "http://192.168.88.52/packets"
+    ):
         self._data_queue = output_queue
+        self._url = url
 
     def _submitter(self):
         re_try_timer = 60
@@ -22,13 +26,25 @@ class Packet_Submitter(object):
                 f_protocols = flatten_protocols(out_packet)
 
                 # format data for post request
-                # for f in f_protocols:
-                #     print(f)
-                #     print(f.serialize())
+                payload = {}
+                for f in f_protocols:
+                    payload[f.identifier] = f.serialize()
 
+                post_success = False
                 # try post quest
+                try:
+                    r = requests.post(self._url, data=payload, timeout=0.001)
+                except Exception as e:
+                    # print(e)
+                    ...
+                else:
+                    if r.status_code == 200:
+                        post_success = True
 
-                # log to file if fail, try every x minutes, delete when transfered
+                # log to file if post failed, try every x minutes, delete when transfered
+                if not post_success:
+                    print("failed to post file")
+
             else:
                 time.sleep(0.1)
 

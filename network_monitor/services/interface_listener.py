@@ -80,7 +80,7 @@ class InterfaceContextManager(object):
 
 class Interface_Listener(object):
     # maximum ethernet frame size is 1522 bytes
-    BUFFER_SIZE = 4096
+    BUFFER_SIZE = 65565
 
     def __init__(self, ifname: str, data_queue: queue.Queue):
         # used to initialize required things
