@@ -1,7 +1,41 @@
 import binascii
+import base64
+import json
 import os
 from collections.abc import Iterable
 import pytest
+
+
+def load_filev2(filename, log_dir="./data"):
+    """load file and return raw pack bytes"""
+
+    path = None
+    if isinstance(filename, str):
+        path = os.path.join(log_dir, filename)
+        if not os.path.exists(path):
+            raise ValueError(f"{path} doesn't exists")
+        path = [path]
+    elif isinstance(filename, Iterable):
+        path = []
+        for f in filename:
+            path_ = os.path.join(log_dir, f)
+            if not os.path.exists(path_):
+                raise ValueError(f"{path_} doesn't exists")
+            path.append(path_)
+    else:
+        raise ValueError("only support str and Interable(str)")
+
+    for p in path:
+        with open(p, "rb") as fin:
+            while True:
+                af_packet = fin.readline()
+                if len(af_packet) == 0:
+                    break
+                af_packet = base64.b64decode(af_packet).decode("utf-8")
+
+                packet = base64.b64decode(fin.readline())
+
+                yield json.loads(af_packet), packet
 
 
 # should support path, str

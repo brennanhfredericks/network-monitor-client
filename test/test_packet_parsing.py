@@ -7,9 +7,17 @@ import threading
 import binascii
 import os
 
-from network_monitor.protocols import Packet_802_3, IPv4, TCP, UDP, ARP, IPv6
+from network_monitor.protocols import (
+    Packet_802_3,
+    IPv4,
+    TCP,
+    UDP,
+    ARP,
+    IPv6,
+    Packet_802_2,
+)
 from network_monitor.filters import get_protocol
-from test_load_data import load_file
+from test_load_data import load_file, load_filev2
 
 # content of
 def ipv4_packets():
@@ -131,3 +139,26 @@ def udp_packets():
 
 def test_udp_packets():
     assert all(udp_packets()) == True
+
+
+def any_packets():
+
+    ret = []
+
+    for af_packet, packet in load_filev2(
+        "raw2_protocols_1617197402_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
+        log_dir="./remote_data",
+    ):
+        print(len(packet))
+        if af_packet["protocol"] > 1500:
+            out = Packet_802_3(packet)
+        else:
+            out = Packet_802_2(packet)
+
+        print(out)
+        break
+
+
+def test_any_packet():
+    any_packets()
+    assert False

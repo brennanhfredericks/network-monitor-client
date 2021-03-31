@@ -103,6 +103,7 @@ def log_packets_based_on_protocols(
 
                         __tracker = {k: v for k, v in tracker.items()}
                         fout.write(base64.b64encode(raw_bytes))
+                        fout.write(b"\n")
                         now = time.time()
                         if now - last_report_time > report_interval:
                             last_report_time = now
@@ -125,7 +126,7 @@ if __name__ == "__main__":
     # log_packets_based_on_protocols("br0", [TCP, UDP], min_number=100)
     # log_packets_based_on_protocols("br0", [IPv4, IPv6], min_number=100)
     log_packets_based_on_protocols(
-        "br0",
+        "enp0s3",
         [IPv4, IPv6, UDP, TCP, ARP, ICMP, ICMPv6, IGMP, LLDP, CDP],
         min_number=10,
     )
