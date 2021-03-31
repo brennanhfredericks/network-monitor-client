@@ -4,7 +4,7 @@ sys.path.insert(0, "../")
 
 import queue
 import threading
-import binascii
+import base64
 
 import os
 import time
@@ -102,7 +102,7 @@ def log_packets_based_on_protocols(
                     if write_packet:
 
                         __tracker = {k: v for k, v in tracker.items()}
-                        fout.write(binascii.b2a_base64(raw_bytes))
+                        fout.write(base64.b64encode(raw_bytes))
                         now = time.time()
                         if now - last_report_time > report_interval:
                             last_report_time = now
@@ -112,8 +112,7 @@ def log_packets_based_on_protocols(
 
                     if log_802_2:
                         # log in a seperate file to avoid hack for testing purposes
-                        fout.write(binascii.b2a_base64(raw_bytes))
-                        print(f"wrote and 802_2 Packet to log")
+                        fout.write(base64.b64encode(raw_bytes))
 
                 if all(map(lambda x: x >= min_number, tracker.values())):
                     waitfor = False
