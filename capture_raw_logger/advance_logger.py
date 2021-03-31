@@ -90,7 +90,7 @@ def log_packets_based_on_protocols(
                 raw_bytes, address = input_queue.get()
 
                 af_packet = AF_Packet(address)
-                fout.write(af_packet.serialize())
+                fout.write(af_packet.serialize_to_bytes())
                 if af_packet.proto > 1500:
                     out_packet = Packet_802_3(raw_bytes)
                     write_packet = False

@@ -38,6 +38,18 @@ class AF_Packet(object):
         self.hatype = address[3]
         self.hwaddr = get_mac_addr(address[4])
 
+    def serialize_to_bytes(self):
+        ret = {
+            "ifname": self.ifname,
+            "protocol": self.proto,
+            "packet type": self.pkttype,
+            "hatype": self.hatype,
+            "hwadddr": self.hwaddr,
+        }
+        ret = base64.b64encode(json.dumps(ret).encode("utf-8"))
+
+        return ret
+
     def serialize(self):
         ret = {
             "ifname": self.ifname,
