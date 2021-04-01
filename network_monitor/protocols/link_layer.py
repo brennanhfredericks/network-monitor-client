@@ -156,11 +156,6 @@ class Packet_802_3(object):
         return json.dumps(self, cls=EnhancedJSONEncoder)
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
-        # hack for 802 test
-        if self.ethertype == 103:
-            out = Packet_802_2(remaining_raw_bytes)
-            self.__encap = out
-        else:
-            self.__encap = Protocol_Parser.parse(
-                Layer_Protocols.Ethertype, self.ethertype, remaining_raw_bytes
-            )
+        self.__encap = Protocol_Parser.parse(
+            Layer_Protocols.Ethertype, self.ethertype, remaining_raw_bytes
+        )
