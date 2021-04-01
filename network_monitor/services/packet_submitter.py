@@ -29,9 +29,8 @@ class Submitter(object):
             if len(out_files) > 0:
                 # process existing files
                 ...
-        self.log_dir = log_dir
 
-        self.out_file = f"out_{int(time.time())}.lsp"
+        self.out_file = os.path.join(log_dir, f"out_{int(time.time())}.lsp")
 
         self.max_buffer_size = max_buffer_size
         self.__buffer_writes = 0
@@ -60,24 +59,23 @@ class Submitter(object):
         with open(self.out_file, "a") as fout:
 
             fout.write(self.__buffer.getvalue())
-
+        print("submitter data written to log")
         self.__buffer.close()
         self.__buffer = StringIO()
         self.__buffer_writes = 0
 
     # write data to buffer
     def _log(self, data):
-        print(type(data))
 
-        for k, v in data.items():
-            print(k, type(k), type(v))
-        # _out_bytes = json.dumps(data, cls=EnhancedJSONEncoder).encode("utf-8")
-        # _out = base64.b64encode(json.dumps(_out_bytes)).decode("utf-8")
-        # self.__buffer.write(_out + "\n")
-        # self.__buffer_writes += 1
+        _out_bytes = json.dumps(data, cls=EnhancedJSONEncoder).encode("utf-8")
+
+        _out = base64.b64encode(_out_bytes).decode("utf-8")
+        self.__buffer.write(_out + "\n")
+        self.__buffer_writes += 1
 
         if self.__buffer_writes > self.max_buffer_size:
             # clear buffer to file append
+
             self._clear_buffer()
 
 
@@ -102,7 +100,7 @@ class Packet_Submitter(object):
 
                 # create a list of all the protocols contain in the packet
                 f_protocols = flatten_protocols(out_packet)
-                print(f_protocols)
+
                 # format data for post request
                 data = {}
                 for f in f_protocols:
@@ -111,6 +109,8 @@ class Packet_Submitter(object):
                 self._submitter.submit(data)
             else:
                 time.sleep(0.1)
+        # write any data in buffer to disk
+        self._submitter._clear_buffer()
 
     def start(self):
         self._sentinal = True

@@ -2,5 +2,6 @@
 **/*.pyc
 ### raw packets used during testing ###
 **/*.lp
+**/*.lsp
 ### VScode ####
 .vscode/*
