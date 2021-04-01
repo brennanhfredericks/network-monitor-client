@@ -1,38 +1,54 @@
+# network monitor
+---
+a python 3 library to parse network frames received by a wired network interface controller operating in promiscuous mode
 
-# TODO
+Each protocol is defined in the appropriate layer and register, unknown protocols are logged to file for analysis and to add to definition
 
-  - Add type hints and annotations and start using mypy
-  - Add functionality to group TCP packets into stream
-  - Packet_Submitter
-    - functionality to asynchronously post data to server, and test when server available
-    - functionality to remove log files when data has is succesfully posted to server
-  - 802.2 Packet
-    - Individual LSAP addresses parsers. Only implmented SNAP extension parser
-  - IPv4 outstanding functionality:
-    - implement checksum verifier
-  - IPv6 outstanding functionality:
-    - implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol
-    - extension headers is part of IP protocol numbers. need specific list of extension headers to stop while loop extraction.
-  - ICMP outstanding functionality
-    - implement checksum verifier
-  - ICMPv6 outstanding functionality
-    -  implement checksum verifier
-  - IGMP outstanding functionality
-    - implement checksum verifier
-  - TCP outstanding functionality
-    - implement checksum verifier
-  - UDP outstanding functionality 
-    - implement checksum verifier
+# basic usage:
 
-# Outstanding
-  - Packet Submitter
-    - use to send data monitor server api
-    - 
-        - periodically check if server is available, if available send store data and clear disk data
-  - Packet Filter
-    - use filter packets based on protocols and flags
+## command line:
+  - list availiable network interfaces
+  `python3 network_monitor.py -li` 
+  - list gateways
+  `python3 network_monitor.py -lg`
+  - listen on network interface, requires superuser privileges
+  `sudo python3 network_monitor.py -i <interface name> `
+## Installation
 
-# Implemented
+### TODO
+
+    - Add type hints and annotations and start using mypy
+    - Add functionality to group TCP packets into stream
+    - Packet_Submitter
+      - functionality to asynchronously post data to server, and test when server available
+      - functionality to remove log files when data has is succesfully posted to server
+    - 802.2 Packet
+      - Individual LSAP addresses parsers. Only implmented SNAP extension parser
+    - IPv4 outstanding functionality:
+      - implement checksum verifier
+    - IPv6 outstanding functionality:
+      - implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol
+      - extension headers is part of IP protocol numbers. need specific list of extension headers to stop while loop extraction.
+    - ICMP outstanding functionality
+      - implement checksum verifier
+    - ICMPv6 outstanding functionality
+      -  implement checksum verifier
+    - IGMP outstanding functionality
+      - implement checksum verifier
+    - TCP outstanding functionality
+      - implement checksum verifier
+    - UDP outstanding functionality 
+      - implement checksum verifier
+
+### Outstanding
+    - Packet Submitter
+      - use to send data monitor server api
+      - 
+          - periodically check if server is available, if available send store data and clear disk data
+    - Packet Filter
+      - use filter packets based on protocols and flags
+
+### Implemented
 
     - Network Listerner
       - functionality listen on a single ethernet interface
@@ -63,34 +79,24 @@
           - 
 
 
-## Command Line
+### Command Line
     - basic command line interface to start the network-monitor with the following argument options
       - list all interfaces (-li, --list-interfaces)
       - list all gateways (-lg, --list-gateways)
       - specify interface to monitor (-i, --interfaces) with interface name
-      - 
-## Service Manager
-    - service_manager to start and stop threads and provide listening interface info
-      - added methods to retrieve the interface addresses,
-      - added error handling for starting service
+  
       
-## Network Listener Serivce
-    - Ethernet port listener
-      - create low level interface directly to network devices
-        - linux
-        - windows (to be tested)
-      - added queue to transfer data (bytes, address)  between threads
 
-# Possible Additional Features
+### Possible Additional Features
     - additional commads:
       - set server address
       - generate empty config file
       - start using config file
       - add functionality to listen on multiple interfaces
 
-# For consideration 
+### For consideration 
     - use interface addresses as identifier when posting data to server
     - could use inheritance for services and protocols
     - could wrap protocol registering with decorater, cleaner.
     - investigate checksum calculation alogorithm and implement to verify checksum values
-    
+    - The sniffer can prevent this by configuring a firewall to block ICMP traffic
