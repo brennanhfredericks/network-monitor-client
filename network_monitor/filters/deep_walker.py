@@ -13,7 +13,7 @@ def get_protocol(out_packet, cls):
 
 def flatten_protocols(out_packet):
     """ return present protocols as list """
-    protocols = []
+    protocols = [out_packet]
     out = out_packet
     loop = True
     while loop:

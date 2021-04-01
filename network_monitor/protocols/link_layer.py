@@ -67,6 +67,7 @@ class AF_Packet(object):
 class Packet_802_2(object):
 
     description = "Ethernet 802.2 LLC Packet"
+    identifier = -2
     DSAP: str
     SSAP: str
     control: str
@@ -130,6 +131,7 @@ class Packet_802_2(object):
 @dataclass
 class Packet_802_3(object):
     description = "Ethernet 802.3 Packet"
+    identifier = -3
     dest_MAC: str
     src_MAC: str
     ethertype: int

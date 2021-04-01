@@ -4,9 +4,11 @@ import time
 import requests
 import os
 import base64
+import json
 from io import StringIO
 
 from network_monitor.filters import flatten_protocols
+from network_monitor.protocols import EnhancedJSONEncoder
 
 
 class Submitter(object):
@@ -65,10 +67,14 @@ class Submitter(object):
 
     # write data to buffer
     def _log(self, data):
+        print(type(data))
 
-        _out = base64.b64encode(data).decode("utf-8")
-        self.__buffer.write(_out + "\n")
-        self.__buffer_writes += 1
+        for k, v in data.items():
+            print(k, type(k), type(v))
+        # _out_bytes = json.dumps(data, cls=EnhancedJSONEncoder).encode("utf-8")
+        # _out = base64.b64encode(json.dumps(_out_bytes)).decode("utf-8")
+        # self.__buffer.write(_out + "\n")
+        # self.__buffer_writes += 1
 
         if self.__buffer_writes > self.max_buffer_size:
             # clear buffer to file append
@@ -96,12 +102,13 @@ class Packet_Submitter(object):
 
                 # create a list of all the protocols contain in the packet
                 f_protocols = flatten_protocols(out_packet)
-
+                print(f_protocols)
                 # format data for post request
                 data = {}
                 for f in f_protocols:
                     data[f.identifier] = f.serialize()
 
+                self._submitter.submit(data)
             else:
                 time.sleep(0.1)
 
@@ -109,7 +116,7 @@ class Packet_Submitter(object):
         self._sentinal = True
 
         self._thread_handle = threading.Thread(
-            target=self._submitter, name="packet submitter", daemon=False
+            target=self._submit, name="packet submitter", daemon=False
         )
 
         self._thread_handle.start()
