@@ -7,6 +7,7 @@ import base64
 import json
 import asyncio
 import aiohttp
+import aiofiles
 from aiohttp import ClientSession
 
 from network_monitor.filters import flatten_protocols
@@ -52,6 +53,13 @@ class Submitter(object):
         resp = await session.post(self.url, json=data)
         resp.raise_for_status()
 
+        # write data to buffer
+
+    async def _log(self, data):
+
+        async with aiofiles.open(self.out_file, "a") as fout:
+            await fout.write(json.dumps(data) + "\n")
+
     async def _out_or_disk(self, origin_address, packet, session):
 
         k = await self._serialize(origin_address, flatten_protocols(packet))
@@ -59,6 +67,7 @@ class Submitter(object):
             await self._post_to_server(k, session)
         except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
             print("aio exception: ", e)
+            await self._log(k)
         except Exception as e:
             print("non aio exception: ", e)
 
@@ -84,20 +93,6 @@ class Submitter(object):
 
         if len(self.__buffer) > self.max_buffer_size:
             await self._process()
-
-    # write data to buffer
-    def _log(self, data):
-
-        _out_bytes = json.dumps(data, cls=EnhancedJSONEncoder).encode("utf-8")
-
-        _out = base64.b64encode(_out_bytes).decode("utf-8")
-        self.__buffer.write(_out + "\n")
-        self.__buffer_writes += 1
-
-        if self.__buffer_writes > self.max_buffer_size:
-            # clear buffer to file append
-
-            self._clear_buffer()
 
 
 class Packet_Submitter(object):
