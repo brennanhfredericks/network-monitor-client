@@ -1,11 +1,13 @@
 import queue
 import threading
 import time
-import requests
+
 import os
 import base64
 import json
-from io import StringIO
+import asyncio
+import aiohttp
+from aiohttp import ClientSession
 
 from network_monitor.filters import flatten_protocols
 from network_monitor.protocols import EnhancedJSONEncoder
@@ -15,7 +17,11 @@ class Submitter(object):
     """ responsible for submitting data and retrying  """
 
     def __init__(
-        self, url: str, log_dir, max_buffer_size: int = 50, re_try_interval=60 * 5
+        self,
+        url: str,
+        log_dir: str,
+        max_buffer_size: int = 5,
+        re_try_interval: int = 60 * 5,
     ):
 
         self.url = url
@@ -33,36 +39,51 @@ class Submitter(object):
         self.out_file = os.path.join(log_dir, f"out_{int(time.time())}.lsp")
 
         self.max_buffer_size = max_buffer_size
-        self.__buffer_writes = 0
-        self.__buffer = StringIO()
+        self.__buffer = []
+
+    async def _serialize(self, origin_address, packet):
+        return {
+            "origin_address": origin_address,
+            "packet": {p.identifier: p.serialize() for p in packet},
+        }
+
+    async def _post_to_server(self, data, session: ClientSession):
+
+        resp = await session.post(self.url, json=data)
+        resp.raise_for_status()
+
+    async def _out_or_disk(self, origin_address, packet, session):
+
+        k = await self._serialize(origin_address, flatten_protocols(packet))
+        try:
+            await self._post_to_server(k, session)
+        except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
+            print("aio exception: ", e)
+        except Exception as e:
+            print("non aio exception: ", e)
+
+        await asyncio.sleep(1)
+        # print(k)
+
+    async def _process(self):
+        tasks = []
+
+        async with ClientSession() as session:
+            for d in self.__buffer:
+                task = asyncio.create_task(self._out_or_disk(*d, session))
+                tasks.append(task)
+
+            await asyncio.gather(*tasks)
+
+        self.__buffer.clear()
 
     # submit data to server asynchronously
-    def submit(self, data):
-        post_success = False
-        # try post quest
-        try:
-            r = requests.post(self._url, data=data, timeout=0.001)
-        except Exception as e:
-            # print(e)
-            ...
-        else:
-            if r.status_code == 200:
-                post_success = True
+    async def submit(self, data):
 
-        if not post_success:
+        self.__buffer.append(data)
 
-            self._log(data)
-
-    # clear buffer and write data to file
-    def _clear_buffer(self):
-
-        with open(self.out_file, "a") as fout:
-
-            fout.write(self.__buffer.getvalue())
-        print("submitter data written to log")
-        self.__buffer.close()
-        self.__buffer = StringIO()
-        self.__buffer_writes = 0
+        if len(self.__buffer) > self.max_buffer_size:
+            await self._process()
 
     # write data to buffer
     def _log(self, data):
@@ -85,7 +106,7 @@ class Packet_Submitter(object):
     def __init__(
         self,
         output_queue: queue.Queue,
-        url: str = "http://192.168.88.52/packets",
+        url: str = "http://127.0.0.1:5000/packets",
         log_dir="./logger_output/submitter/",
     ):
         self._data_queue = output_queue
@@ -93,24 +114,15 @@ class Packet_Submitter(object):
 
     def _submit(self):
         re_try_timer = 60
+        c = []
         while self._sentinal or not self._data_queue.empty():
 
             if not self._data_queue.empty():
-                out_packet = self._data_queue.get()
-
-                # create a list of all the protocols contain in the packet
-                f_protocols = flatten_protocols(out_packet)
-
-                # format data for post request
-                data = {}
-                for f in f_protocols:
-                    data[f.identifier] = f.serialize()
-
-                self._submitter.submit(data)
+                asyncio.run(self._submitter.submit(self._data_queue.get()))
             else:
-                time.sleep(0.1)
+                time.sleep(0.01)
         # write any data in buffer to disk
-        self._submitter._clear_buffer()
+        # self._submitter._clear_buffer()
 
     def start(self):
         self._sentinal = True
