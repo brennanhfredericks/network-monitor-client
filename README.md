@@ -17,28 +17,28 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
 
 ### TODO
 
-    - Add type hints and annotations and start using mypy
-    - Add functionality to group TCP packets into stream
-    - Packet_Submitter
-      - functionality to asynchronously post data to server, and test when server available
-      - functionality to remove log files when data has is succesfully posted to server
-    - 802.2 Packet
-      - Individual LSAP addresses parsers. Only implmented SNAP extension parser
-    - IPv4 outstanding functionality:
-      - implement checksum verifier
-    - IPv6 outstanding functionality:
-      - implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol
-      - extension headers is part of IP protocol numbers. need specific list of extension headers to stop while loop extraction.
-    - ICMP outstanding functionality
-      - implement checksum verifier
-    - ICMPv6 outstanding functionality
-      -  implement checksum verifier
-    - IGMP outstanding functionality
-      - implement checksum verifier
-    - TCP outstanding functionality
-      - implement checksum verifier
-    - UDP outstanding functionality 
-      - implement checksum verifier
+    - [] Add type hints and annotations and start using mypy
+    - [] Add functionality to group TCP packets into stream
+    - [] Packet_Submitter
+      - [] functionality to asynchronously post data to server, and test when server available
+      - [] functionality to remove log files when data has is succesfully posted to server
+    - [] 802.2 Packet
+      - [] Individual LSAP addresses parsers. Only implmented SNAP extension parser
+    - [] IPv4 outstanding functionality:
+      - [] implement checksum verifier
+    - [] IPv6 outstanding functionality:
+      - [] implement parsers for decoding extension headers, only extracting header first two bytes to get to upper layer protocol
+      - [] extension headers is part of IP protocol numbers. need specific list of extension headers to stop while loop extraction.
+    - [] ICMP outstanding functionality
+      - [] implement checksum verifier
+    - [] ICMPv6 outstanding functionality
+      - [] implement checksum verifier
+    - [] IGMP outstanding functionality
+      - [] implement checksum verifier
+    - [] TCP outstanding functionality
+      - [] implement checksum verifier
+    - [] UDP outstanding functionality 
+      - [] implement checksum verifier
 
 ### Outstanding
     - Packet Submitter

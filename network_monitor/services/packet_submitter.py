@@ -8,6 +8,7 @@ import json
 import asyncio
 import aiohttp
 import aiofiles
+import aiofiles.os
 from aiohttp import ClientSession
 
 from network_monitor.filters import flatten_protocols
@@ -22,20 +23,22 @@ class Submitter(object):
         url: str,
         log_dir: str,
         max_buffer_size: int = 5,
-        re_try_interval: int = 60 * 5,
+        retry_interval: int = 60 * 5,
     ):
 
         self.url = url
-
+        self.retry_interval = retry_interval
         # check
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
+            self._logs_available = False
+            self._log_dir = log_dir
         else:
             # check if files in directory. if files process and send to server
-            out_files = os.listdir(log_dir)
-            if len(out_files) > 0:
-                # process existing files
-                ...
+            self._log_dir = log_dir
+            # process existing files
+            asyncio.run(self._clear_logs())
+            self._checked_for_logs = time.time()
 
         self.out_file = os.path.join(log_dir, f"out_{int(time.time())}.lsp")
 
@@ -60,18 +63,56 @@ class Submitter(object):
         async with aiofiles.open(self.out_file, "a") as fout:
             await fout.write(json.dumps(data) + "\n")
 
-    async def _out_or_disk(self, origin_address, packet, session):
+    async def _logs_available(self):
+        "os list dir"
+        return os.listdir(self._log_dir)
+
+    async def _clear_logs(self):
+        "remove logs and try to post"
+
+        logs = await self._logs_available()
+        # maybe added functionality to post file
+        if logs:
+            # load from disk
+            tasks = []
+            async with ClientSession() as session:
+
+                for log in logs:
+                    infile = os.path.join(self._log_dir, log)
+
+                    async with aiofiles.open(infile, "r") as fin:
+                        async for line in fin:
+                            data = json.loads(line)
+                            task = asyncio.create_task(
+                                self._post_to_server(data, session)
+                            )
+                            tasks.append(task)
+                    try:
+                        await asyncio.gather(*tasks)
+                    except (
+                        aiohttp.ClientError,
+                        aiohttp.http_exceptions.HttpProcessingError,
+                    ) as e:
+                        print("clear logs: aio exception: ", e)
+                        break
+                    except Exception as e:
+                        print("clear logs: non aio exception: ", e)
+                    else:
+                        # only run when no exception occurs
+                        await aiofiles.os.remove(infile)
+
+    async def _post_or_disk(self, origin_address, packet, session):
 
         k = await self._serialize(origin_address, flatten_protocols(packet))
         try:
             await self._post_to_server(k, session)
         except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
-            print("aio exception: ", e)
+            # print("aio exception: ", e)
             await self._log(k)
         except Exception as e:
             print("non aio exception: ", e)
 
-        await asyncio.sleep(1)
+        # await asyncio.sleep(1)
         # print(k)
 
     async def _process(self):
@@ -79,7 +120,7 @@ class Submitter(object):
 
         async with ClientSession() as session:
             for d in self.__buffer:
-                task = asyncio.create_task(self._out_or_disk(*d, session))
+                task = asyncio.create_task(self._post_or_disk(*d, session))
                 tasks.append(task)
 
             await asyncio.gather(*tasks)
@@ -90,9 +131,13 @@ class Submitter(object):
     async def submit(self, data):
 
         self.__buffer.append(data)
-
+        time_now = time.time()
         if len(self.__buffer) > self.max_buffer_size:
             await self._process()
+        elif time_now - self._checked_for_logs > self.retry_interval:
+
+            self._clear_logs()
+            self._checked_for_logs = time.time()
 
 
 class Packet_Submitter(object):
@@ -109,15 +154,16 @@ class Packet_Submitter(object):
 
     def _submit(self):
         re_try_timer = 60
-        c = []
+
         while self._sentinal or not self._data_queue.empty():
 
             if not self._data_queue.empty():
                 asyncio.run(self._submitter.submit(self._data_queue.get()))
             else:
-                time.sleep(0.01)
+                time.sleep(0.5)
         # write any data in buffer to disk
-        # self._submitter._clear_buffer()
+        asyncio.run(self._submitter._process())
+        asyncio.run(self._submitter._clear_logs())
 
     def start(self):
         self._sentinal = True

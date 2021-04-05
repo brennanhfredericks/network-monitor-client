@@ -40,7 +40,7 @@ def start_submitter():
             time.sleep(0.5)
             # break
     packet_submitter.stop()
-    assert True
+    assert False
 
 
 def test_submitter():
