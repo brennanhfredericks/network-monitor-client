@@ -159,3 +159,10 @@ class Packet_802_3(object):
         self.__encap = Protocol_Parser.parse(
             Layer_Protocols.Ethertype, self.ethertype, remaining_raw_bytes
         )
+
+
+# manual hack to add link layer protocol to protocol lookup table
+
+Protocol_Parser._register_protocol_class_name("AF_Packet", AF_Packet)
+Protocol_Parser._register_protocol_class_name("Packet_802_3", Packet_802_3)
+Protocol_Parser._register_protocol_class_name("Packet_802_2", Packet_802_2)

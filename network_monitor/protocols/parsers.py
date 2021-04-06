@@ -33,6 +33,9 @@ class Parser:
         self.__protocol_parsers[layer][identifier] = protocol_parser
         self.__protocol_str_lookup[protocol_parser.__name__] = protocol_parser
 
+    def _register_protocol_class_name(self, class_name, protocol_parser):
+        self.__protocol_str_lookup[class_name] = protocol_parser
+
     def get_protocol_by_class_name(self, class_name: str):
 
         """ return an empty protocol class used in comparison """

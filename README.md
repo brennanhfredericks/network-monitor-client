@@ -41,10 +41,11 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
       - [] implement checksum verifier
     - [] UDP outstanding functionality 
       - [] implement checksum verifier
+    - [] manually added link layer protocols to class name lookup table (hack), implement with register functionality?
 
 ### Outstanding
     - Packet Filter
-      -
+
 
 ### Implemented
 
