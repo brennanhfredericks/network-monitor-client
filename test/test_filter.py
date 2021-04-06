@@ -37,8 +37,8 @@ def start_filter():
         [{"IPv4": {}}, {"UDP": {}}],
     )
 
-    # packet_filter.register(t0_filter)
-    packet_filter.register(t1_filter)
+    packet_filter.register(t0_filter)
+    # packet_filter.register(t1_filter)
     # packet_filter.register(t2_filter)
 
     for i, (af_packet, raw_bytes) in enumerate(
@@ -53,14 +53,11 @@ def start_filter():
         else:
             out_packet = Packet_802_2(raw_bytes)
 
-        packet_filter.apply(af_packet, out_packet)
-
-        if i == 0:
-
-            break
-    # print(af_packet, out)
+        if packet_filter.apply(af_packet, out_packet):
+            continue
+        else:
+            assert af_packet["ifname"] != "lo"
 
 
 def test_filter():
     start_filter()
-    assert False
