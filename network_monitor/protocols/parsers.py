@@ -10,6 +10,7 @@ class Parser:
     """ class to register all packet parsers for various levels"""
 
     __protocol_parsers = {}
+    __protocol_str_lookup = {}
 
     def __init__(self, log_dir="./logger_output/unknown_protocols/"):
 
@@ -30,6 +31,19 @@ class Parser:
     def register(self, layer, identifier, protocol_parser):
         # check if dataclass and callable
         self.__protocol_parsers[layer][identifier] = protocol_parser
+        self.__protocol_str_lookup[protocol_parser.__name__] = protocol_parser
+
+    def get_protocol_by_class_name(self, class_name: str):
+
+        """ return an empty protocol class used in comparison """
+        print(self.__protocol_str_lookup)
+        try:
+            res = self.__protocol_str_lookup[class_name]
+        except IndexError as e:
+            # add logging functionality
+            raise ValueError(f"{class_name} not a vaild protocol class name")
+        else:
+            return res
 
     def parse(self, layer, identifier, raw_bytes):
         """ use to register parser"""
