@@ -42,40 +42,38 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
 
 ### Outstanding
     - Packet Submitter
-      - use to send data monitor server api
-      - 
-          - periodically check if server is available, if available send store data and clear disk data
+      - [x] periodically check if server is available, if available send store data and clear disk data
     - Packet Filter
       - use filter packets based on protocols and flags
 
 ### Implemented
 
-    - Network Listerner
-      - functionality listen on a single ethernet interface
+    - [x] Network Listerner
+      - [x] functionality listen on a single ethernet interface
     
-    - Packet Submitter
-      - if monitor server not available buffer data into memory file (to reduce write operation) and write to disk at n intervals 
+    - [x] Packet Submitter
+      - [x] if monitor server not available buffer data into memory file (to reduce write operation) and write to disk at n intervals 
 
-    - Packet Parser
-      - AF packet
-      - 802.3 packet
-        - ethertypes
-          - 2048: Internet Protocol version 4 (IPv4)
-          - 2054: Address Resolution Protocol (ARP)
-          - 34525: Internet Protocol Version 6 (IPv6)
-          - 8192: Cisco Discovery Protocol (CDP)
-          - 35020: Link Layer Discovery Protocol (LLDP)
+    - [x] Packet Parser
+      - [x] AF packet
+      - [] 802.3 packet
+        - [] ethertypes
+          - [x] 2048: Internet Protocol version 4 (IPv4)
+          - [x] 2054: Address Resolution Protocol (ARP)
+          - [x] 34525: Internet Protocol Version 6 (IPv6)
+          - [x] 8192: Cisco Discovery Protocol (CDP)
+          - [x] 35020: Link Layer Discovery Protocol (LLDP)
         
-        - ip protocols
-          - 1: Internet Control Message Protocol (ICMP)
-          - 2: Internet Group Message Protocol (IGMP)
-          - 6: Transmission Control Protocol (TCP)
-          - 17: User Datagram Protocol (UDP)
-          - 58: Internet Control Message Protocol for IPv6 (ICMPv6)
+        - [x] ip protocols
+          - [x] 1: Internet Control Message Protocol (ICMP)
+          - [x] 2: Internet Group Message Protocol (IGMP)
+          - [x] 6: Transmission Control Protocol (TCP)
+          - [x] 17: User Datagram Protocol (UDP)
+          - [x] 58: Internet Control Message Protocol for IPv6 (ICMPv6)
           
-      - 802.2 Packet 
-        - 802.2 LLC PDU Header
-          - 170: SNAP Extension Used
+      - [x] 802.2 Packet 
+        - [x] 802.2 LLC PDU Header
+          - [x] 170: SNAP Extension Used
           - 
 
 
