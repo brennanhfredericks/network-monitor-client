@@ -100,3 +100,5 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
     - investigate checksum calculation alogorithm and implement to verify checksum values
     - The sniffer can prevent this by configuring a firewall to block ICMP traffic responses
     - currently using empty protocol objects as key index, which is larger than int, i.e. bytes usage
+    - implemented filter comparison with generator lookups. could also implemented with dictionary. should compare peformance
+    - make thread loop asynchronous instead of blocking using with sleep, should remove constant block with sleep

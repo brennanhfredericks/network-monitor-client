@@ -77,7 +77,7 @@ class Filter(object):
         return list(proto_filter.values())[0]
 
     def apply(self, _flatten):
-        # print(_flatten)
+        #
         res = []
         for proto_filter in self.definition:
 
@@ -113,29 +113,6 @@ class Filter(object):
 class Packet_Filter(object):
     def __init__(self, filter_application_packets=False):
 
-        # could be ordered dict to retain the insertion order
-        """
-        [
-            AF_Packet: {
-                ifname:br1,
-                proto: 2048,
-                pkttype: PACKET_OUTGOING,
-                        },
-            Packet_802_3: {
-                dest_MAC : 45:AF:FF:DF:58
-                src_MAC: 45:AF:FF:DF:55
-                ethertype: 2048
-            },
-            IPv4:{
-                destination_address: 192.168.60.51,
-                source_address: 192.168.87.42,
-                },
-            TCP: {
-                source_port: 50,
-                destination_port: 5000
-            }
-        ]
-        """
         self.__filters = []
 
     # register filters which is in the form of a dictionary
@@ -161,16 +138,25 @@ class Packet_Filter(object):
         for filter_ in self.__filters:
             res.append(filter_.apply(_p))
 
-        return any(res)
+        if any(res):
+            return None
+        else:
+            return {"Packet": res}
 
 
 class Packet_Parser(object):
     """ Class for processing bytes packets"""
 
-    def __init__(self, data_queue: queue.Queue, output_queue: queue.Queue):
+    def __init__(
+        self,
+        data_queue: queue.Queue,
+        output_queue: queue.Queue,
+        packet_filter: Packet_Filter,
+    ):
 
         self._data_queue = data_queue
         self._output_queue = output_queue
+        self._packet_filter = packet_filter
 
     def _parser(self):
 
@@ -193,8 +179,10 @@ class Packet_Parser(object):
                     out_packet = Packet_802_3(raw_bytes)
 
                 # implement packet filter here before adding data to ouput queue
+                packet = self._packet_filter.apply(af_packet, out_packet)
 
-                self._output_queue.put(out_packet)
+                if packet is not None:
+                    self._output_queue.put(packet)
 
             else:
                 # sleep for 100ms

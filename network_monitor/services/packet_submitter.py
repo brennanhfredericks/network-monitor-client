@@ -45,12 +45,6 @@ class Submitter(object):
         self.max_buffer_size = max_buffer_size
         self.__buffer = []
 
-    async def _serialize(self, origin_address, packet):
-        return {
-            "origin_address": origin_address,
-            "packet": {p.identifier: p.serialize() for p in packet},
-        }
-
     async def _post_to_server(self, data, session: ClientSession):
 
         resp = await session.post(self.url, json=data)
@@ -101,26 +95,22 @@ class Submitter(object):
                         # only run when no exception occurs
                         await aiofiles.os.remove(infile)
 
-    async def _post_or_disk(self, origin_address, packet, session):
+    async def _post_or_disk(self, data, session):
 
-        k = await self._serialize(origin_address, flatten_protocols(packet))
         try:
-            await self._post_to_server(k, session)
+            await self._post_to_server(data, session)
         except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
             # print("aio exception: ", e)
             await self._log(k)
         except Exception as e:
             print("non aio exception: ", e)
 
-        # await asyncio.sleep(1)
-        # print(k)
-
     async def _process(self):
         tasks = []
 
         async with ClientSession() as session:
-            for d in self.__buffer:
-                task = asyncio.create_task(self._post_or_disk(*d, session))
+            for data in self.__buffer:
+                task = asyncio.create_task(self._post_or_disk(data, session))
                 tasks.append(task)
 
             await asyncio.gather(*tasks)

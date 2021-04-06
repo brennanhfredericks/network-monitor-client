@@ -52,8 +52,9 @@ def start_filter():
             out_packet = Packet_802_3(raw_bytes)
         else:
             out_packet = Packet_802_2(raw_bytes)
+        res = packet_filter.apply(af_packet, out_packet)
 
-        if packet_filter.apply(af_packet, out_packet):
+        if res is None:
             continue
         else:
             assert af_packet["ifname"] != "lo"
