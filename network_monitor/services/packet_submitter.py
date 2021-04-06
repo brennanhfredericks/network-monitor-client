@@ -101,7 +101,7 @@ class Submitter(object):
             await self._post_to_server(data, session)
         except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
             # print("aio exception: ", e)
-            await self._log(k)
+            await self._log(data)
         except Exception as e:
             print("non aio exception: ", e)
 
