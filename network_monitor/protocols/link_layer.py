@@ -4,6 +4,7 @@ import sys
 
 import json
 import base64
+import dataclasses
 
 from dataclasses import dataclass
 from .protocol_utils import get_mac_addr, EnhancedJSONEncoder
@@ -39,28 +40,20 @@ class AF_Packet(object):
         self.hwaddr = get_mac_addr(address[4])
 
     def serialize_to_bytes(self):
-        ret = {
-            "ifname": self.ifname,
-            "proto": self.proto,
-            "pkttype": self.pkttype,
-            "hatype": self.hatype,
-            "hwadddr": self.hwaddr,
-        }
-        ret = base64.b64encode(json.dumps(ret).encode("utf-8"))
+        # ret = {
+        #     "ifname": self.ifname,
+        #     "proto": self.proto,
+        #     "pkttype": self.pkttype,
+        #     "hatype": self.hatype,
+        #     "hwadddr": self.hwaddr,
+        # }
+        # ret = base64.b64encode(json.dumps(ret).encode("utf-8"))
 
-        return ret
+        return None
 
     def serialize(self):
-        ret = {
-            "ifname": self.ifname,
-            "proto": self.proto,
-            "pkttype": self.pkttype,
-            "hatype": self.hatype,
-            "hwadddr": self.hwaddr,
-        }
-        ret = base64.b64encode(json.dumps(ret).encode("utf-8")).decode("utf-8")
 
-        return ret
+        return dataclasses.asdict(self)
 
 
 @dataclass
@@ -119,7 +112,7 @@ class Packet_802_2(object):
         return self.__encap
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
@@ -153,7 +146,7 @@ class Packet_802_3(object):
         return self.__encap
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
         self.__encap = Protocol_Parser.parse(

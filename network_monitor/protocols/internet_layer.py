@@ -2,6 +2,7 @@ import sys
 import struct
 import base64
 import json
+import dataclasses
 from dataclasses import dataclass
 
 
@@ -143,7 +144,7 @@ class IPv4(object):
         return self.__encap
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
     def __parse_upper_layer_protocol(self, remaining_raw_bytes):
 
@@ -323,7 +324,7 @@ class ARP(object):
         return None
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
     def _decode_protocol_addr(self, proto_addr):
 
@@ -355,7 +356,7 @@ class CDP(object):
         return self._raw_bytes
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
     def upper_layer(self):
         return None
@@ -402,7 +403,7 @@ class LLDP(object):
         return None
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
 
 collect_protocols.append((Layer_Protocols.Ethertype, 35020, LLDP))
@@ -436,7 +437,7 @@ class IGMP(object):
         return None
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 2, IGMP))
@@ -467,7 +468,7 @@ class ICMPv6(object):
         return None
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 58, ICMPv6))
@@ -501,7 +502,7 @@ class ICMP(object):
         return None
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 1, ICMP))

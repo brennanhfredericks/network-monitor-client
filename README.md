@@ -16,10 +16,10 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
 ## Installation
 
 ### TODO
-    - [] create str mapping for all protocols, to be used for comparison or index 
-    - [] Packet_Filter
-      - [] Add functionality to check if user defined filter is valid. if not valid raise ValueError
-    - [] Add type hints and annotations and start using mypy
+
+    - Add type hints and annotations and start using mypy
+    - Filter format is clungy remove list with dict, nested dictionary  
+    - Packet_Submitter test case is useless, implement better one
     - [] Add functionality to group TCP packets into stream
     - [] Packet_Submitter
       - [] functionality to asynchronously post data to server, and test when server available
@@ -44,11 +44,15 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
     - [] manually added link layer protocols to class name lookup table (hack), implement with register functionality?
 
 ### Outstanding
-    - Packet Filter
+    - 
 
 
 ### Implemented
-
+    - [x] Packet_Filter
+      - [x] Add functionality to check if user defined filter is valid. if not valid raise ValueError
+      - [x] Able to add mutiple Filters
+      - [x] Able to compare attributes and return boolean result  
+    
     - [x] Network Listerner
       - [x] functionality listen on a single ethernet interface
     
@@ -57,8 +61,8 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
 
     - [x] Packet Parser
       - [x] AF packet
-      - [] 802.3 packet
-        - [] ethertypes
+      - [x] 802.3 packet
+        - [x] ethertypes
           - [x] 2048: Internet Protocol version 4 (IPv4)
           - [x] 2054: Address Resolution Protocol (ARP)
           - [x] 34525: Internet Protocol Version 6 (IPv6)

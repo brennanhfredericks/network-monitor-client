@@ -34,12 +34,15 @@ def start_filter():
 
     t2_filter = Filter(
         "test2",
-        [{"IPv4": {}}, {"UDP": {}}],
+        {
+            "IPv4": {"destination_address": "127.0.0.1"},
+            "UDP": {},
+        },
     )
 
-    packet_filter.register(t0_filter)
+    # packet_filter.register(t0_filter)
     # packet_filter.register(t1_filter)
-    # packet_filter.register(t2_filter)
+    packet_filter.register(t2_filter)
 
     for i, (af_packet, raw_bytes) in enumerate(
         load_filev2(

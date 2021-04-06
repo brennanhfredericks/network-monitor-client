@@ -29,8 +29,30 @@ def default_start(args):
         interface_listener = Interface_Listener(args.interface, input_queue)
         service_manager.start_service("interface listener", interface_listener)
 
+        # filter application post request to monitor service
+        packet_filter = Packet_Filter()
+        # temporary
+        packet_filter.register(
+            Filter(
+                "application submitter service",
+                [
+                    {
+                        "IPv4": {
+                            "source_address": "127.0.0.1",
+                            "destination_address": "127.0.0.1",
+                        }
+                    },
+                    {
+                        "TCP": {
+                            "destination_port": 5000,
+                        }
+                    },
+                ],
+            )
+        )
+
         # start packet parser
-        packet_parser = Packet_Parser(input_queue, output_queue)
+        packet_parser = Packet_Parser(input_queue, output_queue, packet_filter)
         service_manager.start_service("packet parser", packet_parser)
 
         # start packet submitter

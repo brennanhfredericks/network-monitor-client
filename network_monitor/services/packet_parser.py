@@ -33,38 +33,31 @@ class Filter(object):
         self.definition = self._check_valid_definition(definition)
 
     def _check_valid_definition(self, definition):
+        assert isinstance(
+            definition, dict
+        ), f"{definition} is not of type {type(dict)}, it have type {type(definition)} "
 
-        if not isinstance(definition, list):
-            definition = [definition]
+        # reoccuring part
+        for proto_class_name, proto_attrs in definition.items():
 
-        for defin in definition:
+            _cls = Protocol_Parser.get_protocol_class_by_name(proto_class_name)
 
-            if not isinstance(defin, dict):
+            if not isinstance(proto_attrs, dict):
                 raise ValueError(
-                    f"{self.name}: {defin} not of type {type(dict)}, it has type {type(defin)}"
+                    f"{self.name}: {proto_class_name} value ({proto_attrs}) not of type {type(dict)}"
                 )
 
-            # reoccuring part
-            for proto_class_name, proto_attrs in defin.items():
-
-                _cls = Protocol_Parser.get_protocol_class_by_name(proto_class_name)
-
-                if not isinstance(proto_attrs, dict):
+            # check for valid dict  keys (attr name) and value (attr value type)
+            for proto_attrs_name, proto_attrs_value in proto_attrs.items():
+                __temp = _cls.__dict__["__annotations__"]
+                if not proto_attrs_name in __temp.keys():
                     raise ValueError(
-                        f"{self.name}: {proto_class_name} value ({proto_attrs}) not of type {type(dict)}"
+                        f"{proto_attrs_name} not a attribute of {proto_class_name}"
                     )
 
-                # check for valid dict  keys (attr name) and value (attr value type)
-                for proto_attrs_name, proto_attrs_value in proto_attrs.items():
-                    __temp = _cls.__dict__["__annotations__"]
-                    if not proto_attrs_name in __temp.keys():
-                        raise ValueError(
-                            f"{proto_attrs_name} not a attribute of {proto_class_name}"
-                        )
-
-                    assert isinstance(
-                        proto_attrs_value, __temp[proto_attrs_name]
-                    ), f"{proto_attrs_name}:{proto_attrs_value} not of type {__temp[proto_attrs_name]}"
+                assert isinstance(
+                    proto_attrs_value, __temp[proto_attrs_name]
+                ), f"{proto_attrs_name}:{proto_attrs_value} not of type {__temp[proto_attrs_name]}"
 
         return definition
 
@@ -79,15 +72,14 @@ class Filter(object):
     def apply(self, _flatten):
         #
         res = []
-        for proto_filter in self.definition:
-
-            def_key = self.get_key(proto_filter)
+        print(self.definition)
+        for proto_name, proto_attrs in self.definition.items():
 
             try:
                 __res_found = next(
-                    self.get_value(proto)
+                    proto_attrs
                     for proto in _flatten
-                    if self.get_key(proto) == def_key
+                    if self.get_key(proto) == proto_name
                 )
             except StopIteration:
                 res.append(False)
@@ -98,6 +90,7 @@ class Filter(object):
                     res.append(True)
                 else:
                     # need check if value is a dict
+                    print(__res_found, type(__res_found))
                     try:
                         __found = next(
                             False for k, v in __value.items() if __res_found[k] != v

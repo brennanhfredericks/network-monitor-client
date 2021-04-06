@@ -2,6 +2,7 @@ import struct
 import sys
 import json
 import base64
+import dataclasses
 from dataclasses import dataclass
 from .layer import Layer_Protocols
 from .protocol_utils import EnhancedJSONEncoder
@@ -88,7 +89,7 @@ class TCP(object):
         return None
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 6, TCP))
@@ -129,7 +130,7 @@ class UDP(object):
         return None
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
 
 collect_protocols.append((Layer_Protocols.IP_protocols, 17, UDP))
