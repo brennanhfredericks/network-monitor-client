@@ -24,11 +24,15 @@ from ..filters.deep_walker import flatten_protocols
 """
 
 
-@dataclass(frozen=True)
+@dataclass
 class Filter(object):
-
     name: str
     definition: list
+
+    def __init__(self, name, definition):
+        self.name = name
+        # check if definiion is valid
+        self.definition = definition
 
 
 class Packet_Filter(object):
@@ -60,13 +64,13 @@ class Packet_Filter(object):
         self.__filters = []
 
     # register filters which is in the form of a dictionary
-    def register_filter(self, filter_: Filter):
+    def register(self, filter_: Filter):
         """
         add packet filter
         """
         self.__filters.append(filter_)
 
-    def apply_filters(self, origin_address, packet):
+    def apply(self, origin_address, packet):
 
         # flatten protocols into list for easy seriliazation
         _packet = flatten_protocols(packet)

@@ -16,7 +16,9 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
 ## Installation
 
 ### TODO
-
+    - [] create str mapping for all protocols, to be used for comparison or index 
+    - [] Packet_Filter
+      - [] Add functionality to check if user defined filter is valid. if not valid raise ValueError
     - [] Add type hints and annotations and start using mypy
     - [] Add functionality to group TCP packets into stream
     - [] Packet_Submitter
@@ -41,10 +43,8 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
       - [] implement checksum verifier
 
 ### Outstanding
-    - Packet Submitter
-      - [x] periodically check if server is available, if available send store data and clear disk data
     - Packet Filter
-      - use filter packets based on protocols and flags
+      -
 
 ### Implemented
 
@@ -52,7 +52,7 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
       - [x] functionality listen on a single ethernet interface
     
     - [x] Packet Submitter
-      - [x] if monitor server not available buffer data into memory file (to reduce write operation) and write to disk at n intervals 
+      - [x] periodically check if server is available, if available send store data and clear disk data
 
     - [x] Packet Parser
       - [x] AF packet
@@ -97,4 +97,5 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
     - could use inheritance for services and protocols
     - could wrap protocol registering with decorater, cleaner.
     - investigate checksum calculation alogorithm and implement to verify checksum values
-    - The sniffer can prevent this by configuring a firewall to block ICMP traffic
+    - The sniffer can prevent this by configuring a firewall to block ICMP traffic responses
+    - currently using empty protocol objects as key index, which is larger than int, i.e. bytes usage
