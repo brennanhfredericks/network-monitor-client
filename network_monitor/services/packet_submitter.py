@@ -160,7 +160,7 @@ class Packet_Submitter(object):
             if not self._data_queue.empty():
                 asyncio.run(self._submitter.submit(self._data_queue.get()))
             else:
-                time.sleep(0.5)
+                time.sleep(0.01)
         # write any data in buffer to disk
         asyncio.run(self._submitter._process())
         asyncio.run(self._submitter._clear_logs())

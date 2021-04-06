@@ -36,11 +36,8 @@ def start_submitter():
 
         feeder.put((af_packet, out))
 
-        if i % 20 == 0 and i != 0:
-            time.sleep(0.5)
-            # break
     packet_submitter.stop()
-    assert False
+    assert True
 
 
 def test_submitter():
