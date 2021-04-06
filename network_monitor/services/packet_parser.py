@@ -35,7 +35,7 @@ class Filter(object):
     def _check_valid_definition(self, definition):
         assert isinstance(
             definition, dict
-        ), f"{definition} is not of type {type(dict)}, it have type {type(definition)} "
+        ), f"{definition} is not of type {type(dict())}, it has a type {type(definition)} "
 
         # reoccuring part
         for proto_class_name, proto_attrs in definition.items():
@@ -44,7 +44,7 @@ class Filter(object):
 
             if not isinstance(proto_attrs, dict):
                 raise ValueError(
-                    f"{self.name}: {proto_class_name} value ({proto_attrs}) not of type {type(dict)}"
+                    f"{self.name}: {proto_class_name} value ({proto_attrs}) not of type {type(dict())}"
                 )
 
             # check for valid dict  keys (attr name) and value (attr value type)
@@ -111,7 +111,7 @@ class Packet_Filter(object):
             for p in out_protocols
         }
 
-        _p["AF_Packet"] = af_packet
+        _p["AF_Packet"] = af_packet.serialize()
 
         res = []
         for filter_ in self.__filters:

@@ -35,19 +35,15 @@ def default_start(args):
         packet_filter.register(
             Filter(
                 "application submitter service",
-                [
-                    {
-                        "IPv4": {
-                            "source_address": "127.0.0.1",
-                            "destination_address": "127.0.0.1",
-                        }
+                {
+                    "IPv4": {
+                        "source_address": "127.0.0.1",
+                        "destination_address": "127.0.0.1",
                     },
-                    {
-                        "TCP": {
-                            "destination_port": 5000,
-                        }
+                    "TCP": {
+                        "destination_port": 5000,
                     },
-                ],
+                },
             )
         )
 

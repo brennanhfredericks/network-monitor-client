@@ -103,6 +103,7 @@ class Submitter(object):
             # print("aio exception: ", e)
             await self._log(data)
         except Exception as e:
+            print(data)
             print("non aio exception: ", e)
 
     async def _process(self):
