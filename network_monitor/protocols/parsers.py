@@ -1,6 +1,9 @@
 import os
 import time
 import binascii
+
+from functools import lru_cache
+
 from .protocol_utils import Unknown
 
 from .layer import Layer_Protocols
@@ -36,7 +39,7 @@ class Parser:
     def _register_protocol_class_name(self, class_name, protocol_parser):
         self.__protocol_str_lookup[class_name] = protocol_parser
 
-    def get_protocol_by_class_name(self, class_name: str):
+    def get_protocol_class_by_name(self, class_name: str):
 
         """ return an empty protocol class used in comparison """
         try:
@@ -44,6 +47,23 @@ class Parser:
         except IndexError as e:
             # add logging functionality
             raise ValueError(f"{class_name} not a vaild protocol class name")
+        else:
+            return res
+
+    @lru_cache
+    def _reverse_protocols_str_lookup(self):
+
+        return {v: k for k, v in self.__protocol_str_lookup.items()}
+
+    def get_protocol_name_by_class(self, cls):
+        """ return name of class"""
+        # inefficient,only use to ensure the latest version is use cach
+        rev_protocol_str = self._reverse_protocols_str_lookup()
+        try:
+            res = rev_protocol_str[cls]
+        except IndexError as e:
+            # add logging functionality
+            raise ValueError(f"{cls} not register in lookup table")
         else:
             return res
 

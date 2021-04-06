@@ -132,14 +132,14 @@ class Packet_802_2(object):
 class Packet_802_3(object):
     description = "Ethernet 802.3 Packet"
     identifier = -3
-    dest_MAC: str
-    src_MAC: str
+    destination_MAC: str
+    source_MAC: str
     ethertype: int
 
     def __init__(self, raw_bytes):
         __des_addr, __src_addr, __tp = struct.unpack("! 6s 6s H", raw_bytes[:14])
-        self.dest_MAC = get_mac_addr(__des_addr)
-        self.src_MAC = get_mac_addr(__src_addr)
+        self.destination_MAC = get_mac_addr(__des_addr)
+        self.source_MAC = get_mac_addr(__src_addr)
         self.ethertype = __tp
 
         self._raw_bytes = raw_bytes

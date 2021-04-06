@@ -19,9 +19,6 @@ from ..filters.deep_walker import flatten_protocols
         - filter input is provide as a dict
         - i.e {IPv4:{destination:192.168.124.26}}
         - match dict based on keys and values
-
-
-
 """
 
 
@@ -33,23 +30,28 @@ class Filter(object):
     def __init__(self, name, definition):
         self.name = name
         # check if definiion is valid
-        self._check_valid_definition(definition)
-        self.definition = definition
+        self.definition = self._check_valid_definition(definition)
 
     def _check_valid_definition(self, definition):
+
+        if not isinstance(definition, list):
+            definition = [definition]
+
         for defin in definition:
 
             if not isinstance(defin, dict):
-                raise ValueError(f"{self.name}: def_ not of type dict")
+                raise ValueError(
+                    f"{self.name}: {defin} not of type {type(dict)}, it has type {type(defin)}"
+                )
 
             # reoccuring part
             for proto_class_name, proto_attrs in defin.items():
 
-                _cls = Protocol_Parser.get_protocol_by_class_name(proto_class_name)
+                _cls = Protocol_Parser.get_protocol_class_by_name(proto_class_name)
 
                 if not isinstance(proto_attrs, dict):
                     raise ValueError(
-                        f"{self.name}: {proto_class_name} value ({proto_attrs}) not of type dict"
+                        f"{self.name}: {proto_class_name} value ({proto_attrs}) not of type {type(dict)}"
                     )
 
                 # check for valid dict  keys (attr name) and value (attr value type)
@@ -63,6 +65,49 @@ class Filter(object):
                     assert isinstance(
                         proto_attrs_value, __temp[proto_attrs_name]
                     ), f"{proto_attrs_name}:{proto_attrs_value} not of type {__temp[proto_attrs_name]}"
+
+        return definition
+
+    @staticmethod
+    def get_key(proto_filter):
+        return list(proto_filter.keys())[0]
+
+    @staticmethod
+    def get_value(proto_filter):
+        return list(proto_filter.values())[0]
+
+    def apply(self, _flatten):
+        # print(_flatten)
+        res = []
+        for proto_filter in self.definition:
+
+            def_key = self.get_key(proto_filter)
+
+            try:
+                __res_found = next(
+                    self.get_value(proto)
+                    for proto in _flatten
+                    if self.get_key(proto) == def_key
+                )
+            except StopIteration:
+                res.append(False)
+            else:
+                __value = self.get_value(proto_filter)
+
+                if not __value:
+                    res.append(True)
+                else:
+                    # need check if value is a dict
+                    try:
+                        __found = next(
+                            False for k, v in __value.items() if __res_found[k] != v
+                        )
+                    except StopIteration:
+                        res.append(True)
+                    else:
+                        res.append(__found)
+
+        return all(res)
 
 
 class Packet_Filter(object):
@@ -100,21 +145,23 @@ class Packet_Filter(object):
         """
         self.__filters.append(filter_)
 
-    def apply(self, origin_address, packet):
+    def apply(self, af_packet, out_packet) -> bool:
 
         # flatten protocols into list for easy seriliazation
-        _packet = flatten_protocols(packet)
+        out_protocols = flatten_protocols(out_packet)
 
         # create list of dictionaries containing definitions
-        #      :{}
-        _p = [{p.__class__: p.serialize()} for p in _packet]
+        _p = [
+            {Protocol_Parser.get_protocol_name_by_class(p.__class__): p.serialize()}
+            for p in out_protocols
+        ]
+        _p.insert(0, {"AF_Packet": af_packet})
 
-        print(_p)
+        res = []
+        for filter_ in self.__filters:
+            res.append(filter_.apply(_p))
 
-    # - submit packet to filter
-    # - convert packet to list of protocols
-    # - convert list of protocols to dict
-    # - loop through filters and try to match keys and then values
+        return any(res)
 
 
 class Packet_Parser(object):
