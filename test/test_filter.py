@@ -23,27 +23,28 @@ def start_filter():
 
     # create Filter to filter all packets send by application to monitor services
     t_filter = Filter(
-        "application post traffic", [{AF_Packet: {"ifname": "lo"}}, {TCP: {}}]
+        "application post traffic",
+        [{"AF_Packet": {"ifname": "lo"}}, {"TCP": {"source_port": 45}}],
     )
-    print(Protocol_Parser.get_protocol_by_class_name("AF_Packet"))
+    # print(t_filter)
     packet_filter.register(t_filter)
 
-    for i, (origin_address, packet) in enumerate(
-        load_filev2(
-            "raw2_protocols_1617213286_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
-            log_dir="./remote_data",
-        )
-    ):
+    # for i, (origin_address, packet) in enumerate(
+    #     load_filev2(
+    #         "raw2_protocols_1617213286_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
+    #         log_dir="./remote_data",
+    #     )
+    # ):
 
-        if origin_address["protocol"] > 1500:
-            out = Packet_802_3(packet)
-        else:
-            out = Packet_802_2(packet)
+    #     if origin_address["protocol"] > 1500:
+    #         out = Packet_802_3(packet)
+    #     else:
+    #         out = Packet_802_2(packet)
 
-        if i > 10:
+    #     if i > 10:
 
-            break
-        # print(af_packet, out)
+    #         break
+    # print(af_packet, out)
 
 
 def test_filter():

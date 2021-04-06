@@ -3,7 +3,8 @@ import threading
 import time
 from dataclasses import dataclass
 
-from ..protocols import AF_Packet, Packet_802_3, Packet_802_2
+from ..protocols import AF_Packet, Packet_802_3, Packet_802_2, Protocol_Parser
+
 from ..filters.deep_walker import flatten_protocols
 
 """
@@ -32,7 +33,36 @@ class Filter(object):
     def __init__(self, name, definition):
         self.name = name
         # check if definiion is valid
+        self._check_valid_definition(definition)
         self.definition = definition
+
+    def _check_valid_definition(self, definition):
+        for defin in definition:
+
+            if not isinstance(defin, dict):
+                raise ValueError(f"{self.name}: def_ not of type dict")
+
+            # reoccuring part
+            for proto_class_name, proto_attrs in defin.items():
+
+                _cls = Protocol_Parser.get_protocol_by_class_name(proto_class_name)
+
+                if not isinstance(proto_attrs, dict):
+                    raise ValueError(
+                        f"{self.name}: {proto_class_name} value ({proto_attrs}) not of type dict"
+                    )
+
+                # check for valid dict  keys (attr name) and value (attr value type)
+                for proto_attrs_name, proto_attrs_value in proto_attrs.items():
+                    __temp = _cls.__dict__["__annotations__"]
+                    if not proto_attrs_name in __temp.keys():
+                        raise ValueError(
+                            f"{proto_attrs_name} not a attribute of {proto_class_name}"
+                        )
+
+                    assert isinstance(
+                        proto_attrs_value, __temp[proto_attrs_name]
+                    ), f"{proto_attrs_name}:{proto_attrs_value} not of type {__temp[proto_attrs_name]}"
 
 
 class Packet_Filter(object):

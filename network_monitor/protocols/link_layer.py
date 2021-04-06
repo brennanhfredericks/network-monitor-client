@@ -41,8 +41,8 @@ class AF_Packet(object):
     def serialize_to_bytes(self):
         ret = {
             "ifname": self.ifname,
-            "protocol": self.proto,
-            "packet type": self.pkttype,
+            "proto": self.proto,
+            "pkttype": self.pkttype,
             "hatype": self.hatype,
             "hwadddr": self.hwaddr,
         }
@@ -53,8 +53,8 @@ class AF_Packet(object):
     def serialize(self):
         ret = {
             "ifname": self.ifname,
-            "protocol": self.proto,
-            "packet type": self.pkttype,
+            "proto": self.proto,
+            "pkttype": self.pkttype,
             "hatype": self.hatype,
             "hwadddr": self.hwaddr,
         }

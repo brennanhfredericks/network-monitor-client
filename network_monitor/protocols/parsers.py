@@ -39,7 +39,6 @@ class Parser:
     def get_protocol_by_class_name(self, class_name: str):
 
         """ return an empty protocol class used in comparison """
-        print(self.__protocol_str_lookup)
         try:
             res = self.__protocol_str_lookup[class_name]
         except IndexError as e:
@@ -51,8 +50,8 @@ class Parser:
     def parse(self, layer, identifier, raw_bytes):
         """ use to register parser"""
         try:
-            return self.__protocol_parsers[layer][identifier](raw_bytes)
-            # print(f"parsed: {self._encap}")
+            res = self.__protocol_parsers[layer][identifier](raw_bytes)
+
         except KeyError as e:
 
             with open(self.__fname, "ab") as fout:
@@ -63,6 +62,8 @@ class Parser:
                 f"Protocol Not Implemented - Layer: {layer}, identifier: {identifier}"
             )
             return Unknown("no protocol parser available", identifier, raw_bytes)
+        else:
+            return res
 
 
 Protocol_Parser = Parser()
