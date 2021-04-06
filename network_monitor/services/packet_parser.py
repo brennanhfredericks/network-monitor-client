@@ -61,45 +61,29 @@ class Filter(object):
 
         return definition
 
-    @staticmethod
-    def get_key(proto_filter):
-        return list(proto_filter.keys())[0]
+    def apply(self, packet):
 
-    @staticmethod
-    def get_value(proto_filter):
-        return list(proto_filter.values())[0]
-
-    def apply(self, _flatten):
-        #
         res = []
-        print(self.definition)
+
         for proto_name, proto_attrs in self.definition.items():
-
-            try:
-                __res_found = next(
-                    proto_attrs
-                    for proto in _flatten
-                    if self.get_key(proto) == proto_name
-                )
-            except StopIteration:
-                res.append(False)
-            else:
-                __value = self.get_value(proto_filter)
-
-                if not __value:
+            if proto_name in packet.keys():
+                if not proto_attrs:
                     res.append(True)
                 else:
-                    # need check if value is a dict
-                    print(__res_found, type(__res_found))
                     try:
-                        __found = next(
-                            False for k, v in __value.items() if __res_found[k] != v
+                        next(
+                            False
+                            for k, v in proto_attrs.items()
+                            if packet[proto_name][k] != v
                         )
                     except StopIteration:
                         res.append(True)
                     else:
-                        res.append(__found)
+                        res.append(False)
+            else:
+                res.append(False)
 
+        # single filter all protocols should match
         return all(res)
 
 
@@ -118,14 +102,16 @@ class Packet_Filter(object):
     def apply(self, af_packet, out_packet) -> bool:
 
         # flatten protocols into list for easy seriliazation
+
         out_protocols = flatten_protocols(out_packet)
 
         # create list of dictionaries containing definitions
-        _p = [
-            {Protocol_Parser.get_protocol_name_by_class(p.__class__): p.serialize()}
+        _p = {
+            Protocol_Parser.get_protocol_name_by_class(p.__class__): p.serialize()
             for p in out_protocols
-        ]
-        _p.insert(0, {"AF_Packet": af_packet})
+        }
+
+        _p["AF_Packet"] = af_packet
 
         res = []
         for filter_ in self.__filters:
@@ -134,7 +120,7 @@ class Packet_Filter(object):
         if any(res):
             return None
         else:
-            return {"Packet": res}
+            return _p
 
 
 class Packet_Parser(object):

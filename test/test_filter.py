@@ -17,32 +17,24 @@ from network_monitor import Packet_Filter, Filter
 from network_monitor.filters import present_protocols
 from test_load_data import load_filev2
 
-
+# increase test coverage for filter implementation
 def start_filter():
     packet_filter = Packet_Filter()
 
     # create Filter to filter all packets send by application to monitor services
+
     t0_filter = Filter(
         "test0",
-        {"AF_Packet": {"ifname": "lo"}},
-    )
-
-    t1_filter = Filter(
-        "test1",
-        {"TCP": {}},
-    )
-
-    t2_filter = Filter(
-        "test2",
         {
-            "IPv4": {"destination_address": "127.0.0.1"},
-            "UDP": {},
+            "IPv4": {
+                "source_address": "127.0.0.1",
+                "destination_address": "127.0.0.1",
+            },
+            "AF_Packet": {"ifname": "lo"},
         },
     )
 
-    # packet_filter.register(t0_filter)
-    # packet_filter.register(t1_filter)
-    packet_filter.register(t2_filter)
+    packet_filter.register(t0_filter)
 
     for i, (af_packet, raw_bytes) in enumerate(
         load_filev2(
@@ -55,12 +47,26 @@ def start_filter():
             out_packet = Packet_802_3(raw_bytes)
         else:
             out_packet = Packet_802_2(raw_bytes)
+
         res = packet_filter.apply(af_packet, out_packet)
 
         if res is None:
             continue
         else:
-            assert af_packet["ifname"] != "lo"
+            ret = []
+            for proto_name, proto_attrs in t0_filter.definition.items():
+                try:
+                    value = res[proto_name]
+                except IndexError:
+                    ret.append(False)
+                else:
+                    _ret = []
+                    for k, v in proto_attrs.items():
+                        _ret.append(value[k] == v)
+
+                    ret.append(all(_ret))
+
+            assert all(ret) == False
 
 
 def test_filter():
