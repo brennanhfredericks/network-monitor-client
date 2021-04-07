@@ -15,7 +15,7 @@ from .services import (
     Packet_Filter,
     Filter,
 )
-
+from .protocols import Protocol_Parser
 from .configurations import generate_template_configuration
 
 
@@ -132,6 +132,9 @@ def start_from_configuration_file(config_path: str):
             else:
                 collect_filters.append(def_filter)
 
+    # parser output directory
+    Protocol_Parser.set_log_directory(unknownprotocols)
+
     # check validate choice and start process
     service_manager = Service_Manager(ifname)
     input_queue = queue.Queue()
@@ -142,7 +145,9 @@ def start_from_configuration_file(config_path: str):
     service_manager.start_service("interface listener", interface_listener)
 
     # filter application post request to monitor service
-    packet_filter = Packet_Filter()
+    packet_filter = Packet_Filter(
+        filter_application_packets=filterallapplicationtraffic
+    )
 
     # temporary
     packet_filter.register(collect_filters)
@@ -152,8 +157,20 @@ def start_from_configuration_file(config_path: str):
     service_manager.start_service("packet parser", packet_parser)
 
     # start packet submitter
-    packet_submitter = Packet_Submitter(output_queue)
+    packet_submitter = Packet_Submitter(output_queue, url, local, retryinterval)
     service_manager.start_service("packet submitter", packet_submitter)
+
+    # exit cleanly
+    def signal_handler(sig, frame):
+        service_manager.stop_all_services()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTSTP, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # blocking loop
+    while True:
+        time.sleep(0.05)
 
 
 def default_start_on_interface(ifname: str):

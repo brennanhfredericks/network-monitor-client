@@ -20,16 +20,24 @@ class Parser:
         # init layer protocols
         for layer_protocol in Layer_Protocols:
             self.__protocol_parsers[layer_protocol] = {}
+
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-        self.__fname = os.path.join(
-            log_dir, f"raw_unknown_protocols_{int(time.time())}.lp"
-        )
+
+        self.__log = log_dir
+
+        self.__fname = f"raw_unknown_protocols_{int(time.time())}.lp"
 
     @property
     def parsers(self):
 
         return self.__protocol_parsers
+
+    def set_log_directory(self, log_dir):
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
+        self.__log = log_dir
 
     def register(self, layer, identifier, protocol_parser):
         # check if dataclass and callable
@@ -73,8 +81,8 @@ class Parser:
             res = self.__protocol_parsers[layer][identifier](raw_bytes)
 
         except KeyError as e:
-
-            with open(self.__fname, "ab") as fout:
+            path = os.path.join(self.__log, self.__fname)
+            with open(path, "ab") as fout:
                 info = f"{layer}_{identifier}"
                 fout.write(binascii.b2a_base64(info.encode()))
                 fout.write(binascii.b2a_base64(raw_bytes))

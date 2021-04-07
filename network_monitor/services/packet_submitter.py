@@ -23,21 +23,24 @@ class Submitter(object):
         url: str,
         log_dir: str,
         max_buffer_size: int = 5,
-        retry_interval: int = 60 * 5,
+        retryinterval: int = 60 * 5,
     ):
 
         self.url = url
-        self.retry_interval = retry_interval
+        self.retryinterval = retryinterval
+        self._logs_written = False
         # check
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-            self._logs_available = False
+
             self._log_dir = log_dir
+            self._checked_for_logs = time.time()
         else:
             # check if files in directory. if files process and send to server
             self._log_dir = log_dir
             # process existing files
             asyncio.run(self._clear_logs())
+
             self._checked_for_logs = time.time()
 
         self.out_file = os.path.join(log_dir, f"out_{int(time.time())}.lsp")
@@ -56,6 +59,8 @@ class Submitter(object):
 
         async with aiofiles.open(self.out_file, "a") as fout:
             await fout.write(json.dumps(data) + "\n")
+
+        self._logs_written = True
 
     async def _logs_available(self):
         "os list dir"
@@ -125,7 +130,9 @@ class Submitter(object):
         time_now = time.time()
         if len(self.__buffer) > self.max_buffer_size:
             await self._process()
-        elif time_now - self._checked_for_logs > self.retry_interval:
+        elif (
+            time_now - self._checked_for_logs > self.retryinterval
+        ) and self._logs_written:
 
             self._clear_logs()
             self._checked_for_logs = time.time()
@@ -137,14 +144,14 @@ class Packet_Submitter(object):
     def __init__(
         self,
         output_queue: queue.Queue,
-        url: str = "http://127.0.0.1:5000/packets",
-        log_dir="./logger_output/submitter/",
+        url: str,
+        log_dir: str,
+        retryinterval: int,
     ):
         self._data_queue = output_queue
-        self._submitter = Submitter(url, log_dir)
+        self._submitter = Submitter(url, log_dir, retryinterval=retryinterval)
 
     def _submit(self):
-        re_try_timer = 60
 
         while self._sentinal or not self._data_queue.empty():
 
