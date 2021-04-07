@@ -16,14 +16,16 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
 ## Installation
 
 ### TODO
-
+    - Configuration_Parser
+      - use to load configuration
+        - log dir for unknown protocols
+        - log dir for submitter service logs
+        - url for for monitor server
+        - filter definitions 
     - Add type hints and annotations and start using mypy
-    - Filter format is clungy remove list with dict, nested dictionary  
     - Packet_Submitter test case is useless, implement better one
     - [] Add functionality to group TCP packets into stream
-    - [] Packet_Submitter
-      - [] functionality to asynchronously post data to server, and test when server available
-      - [] functionality to remove log files when data has is succesfully posted to server
+
     - [] 802.2 Packet
       - [] Individual LSAP addresses parsers. Only implmented SNAP extension parser
     - [] IPv4 outstanding functionality:
@@ -43,10 +45,6 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
       - [] implement checksum verifier
     - [] manually added link layer protocols to class name lookup table (hack), implement with register functionality?
 
-### Outstanding
-    - 
-
-
 ### Implemented
     - [x] Packet_Filter
       - [x] Add functionality to check if user defined filter is valid. if not valid raise ValueError
@@ -58,6 +56,8 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
     
     - [x] Packet Submitter
       - [x] periodically check if server is available, if available send store data and clear disk data
+      - [x] functionality to asynchronously post data to server, and test when server available
+      - [x] functionality to remove log files when data has is succesfully posted to server
 
     - [x] Packet Parser
       - [x] AF packet
@@ -96,6 +96,7 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
       - generate empty config file
       - start using config file
       - add functionality to listen on multiple interfaces
+    - 
 
 ### For consideration 
     - use interface addresses as identifier when posting data to server

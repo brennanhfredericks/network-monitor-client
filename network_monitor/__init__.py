@@ -14,6 +14,8 @@ from .services import (
     Filter,
 )
 
+from .configurations import generate_template_configuration
+
 
 def default_start(args):
     service_manager = None
@@ -64,6 +66,10 @@ def default_start(args):
         if args.list_interfaces:
             print(f"interfaces: {netifaces.interfaces()}")
 
+        if args.generate_config_file:
+            generate_template_configuration(args.generate_config_file)
+            print("created configuration file")
+
         sys.exit(0)
 
     # exit cleanly
@@ -105,6 +111,12 @@ def main():
         "--list-gateways",
         action="store_true",
         help="list all available gateways",
+    )
+    basic_parser.add_argument(
+        "--generate-config-file",
+        action="store",
+        type=str,
+        help="generate a configuration template file",
     )
 
     # parse arguments
