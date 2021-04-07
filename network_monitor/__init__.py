@@ -6,6 +6,7 @@ import signal
 import time
 import os
 import configparser
+import re
 from .services import (
     Service_Manager,
     Packet_Parser,
@@ -59,18 +60,6 @@ def start_from_configuration_file(config_path: str):
         print(f"Unsuccessfull at parsing {config_path}")
         sys.exit(1)
 
-    # Required Paramaters
-    # InterfaceName
-
-    # Optional Paramaters
-    # UnknownProtocols
-    # Log
-    # Local
-    # Url
-    # Filter
-    # FilterAllApplicationTraffic
-    # RetryInterval
-
     # check if interface name is provide and is valid
     ifname = config.get("ListenerService", "InterfaceName", fallback=None)
     if ifname is None:
@@ -108,6 +97,20 @@ def start_from_configuration_file(config_path: str):
 
     # timeout for resubmission of logged data
     retryinterval = config.get("SubmitterService", "RetyInterval", fallback=300)
+
+    # retrieve filters
+    filters = [re.search("Filter", section) for section in config.sections()]
+
+    for idx, filtr in enumerate(filters):
+
+        if filtr is None:
+            continue
+
+        section = config.sections()[idx]
+
+        def_ = config.get(section, "Definition", fallback=None)
+
+        def_filter = Filter(section, def_)
 
 
 def default_start_on_interface(ifname: str):

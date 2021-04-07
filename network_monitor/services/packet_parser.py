@@ -1,6 +1,8 @@
 import queue
 import threading
 import time
+import json
+
 from dataclasses import dataclass
 
 from ..protocols import AF_Packet, Packet_802_3, Packet_802_2, Protocol_Parser
@@ -25,7 +27,7 @@ from ..filters.deep_walker import flatten_protocols
 @dataclass
 class Filter(object):
     name: str
-    definition: list
+    definition: dict
 
     def __init__(self, name, definition):
         self.name = name
@@ -33,9 +35,18 @@ class Filter(object):
         self.definition = self._check_valid_definition(definition)
 
     def _check_valid_definition(self, definition):
-        assert isinstance(
-            definition, dict
-        ), f"{definition} is not of type {type(dict())}, it has a type {type(definition)} "
+
+        if not isinstance(definition, dict):
+
+            # check if str and try to decode to json
+            if isinstance(definition, str):
+                try:
+                    definition = json.loads(definition)
+                except:
+                    raise ValueError(f"{definition} is not a valid definition")
+
+            else:
+                raise ValueError(f"{definition} is not a valid definition")
 
         # reoccuring part
         for proto_class_name, proto_attrs in definition.items():
