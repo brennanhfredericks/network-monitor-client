@@ -108,8 +108,8 @@ class Interface_Listener(object):
 
             print("loop stopped")
         except Exception as e:
-            self.data_queue.put(e)
-            self.data_queue.put(sys.exc_info())
+            self._data_queue.put(e)
+            self._data_queue.put(sys.exc_info())
 
     def stop(self):
         self._sentinal = False

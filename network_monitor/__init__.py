@@ -100,7 +100,7 @@ def start_from_configuration_file(config_path: str):
 
     # retrieve filters
     filters = [re.search("Filter", section) for section in config.sections()]
-
+    collect_filters = []
     for idx, filtr in enumerate(filters):
 
         if filtr is None:
@@ -110,7 +110,50 @@ def start_from_configuration_file(config_path: str):
 
         def_ = config.get(section, "Definition", fallback=None)
 
-        def_filter = Filter(section, def_)
+        if def_ is not None:
+            try:
+                def_filter = Filter(section, def_)
+            except Exception as e:
+                print(f"issue with {section}: {e}")
+                sys.exit(1)
+            else:
+                collect_filters.append(def_filter)
+
+    if not collect_filters:
+        ## check for default filter
+        if "filter" in config.defaults():
+
+            filtr = config.defaults()["filter"]
+            try:
+                def_filter = Filter("default", filtr)
+            except Exception as e:
+                print(f"issue with default filter: {e}")
+                sys.exit(1)
+            else:
+                collect_filters.append(def_filter)
+
+    # check validate choice and start process
+    service_manager = Service_Manager(ifname)
+    input_queue = queue.Queue()
+    output_queue = queue.Queue()
+
+    # start network listener
+    interface_listener = Interface_Listener(ifname, input_queue)
+    service_manager.start_service("interface listener", interface_listener)
+
+    # filter application post request to monitor service
+    packet_filter = Packet_Filter()
+
+    # temporary
+    packet_filter.register(collect_filters)
+
+    # start packet parser
+    packet_parser = Packet_Parser(input_queue, output_queue, packet_filter)
+    service_manager.start_service("packet parser", packet_parser)
+
+    # start packet submitter
+    packet_submitter = Packet_Submitter(output_queue)
+    service_manager.start_service("packet submitter", packet_submitter)
 
 
 def default_start_on_interface(ifname: str):

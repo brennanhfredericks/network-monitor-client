@@ -42,8 +42,8 @@ class Filter(object):
             if isinstance(definition, str):
                 try:
                     definition = json.loads(definition)
-                except:
-                    raise ValueError(f"{definition} is not a valid definition")
+                except Exception as e:
+                    raise ValueError(f"{definition} is not a valid definition: {e}")
 
             else:
                 raise ValueError(f"{definition} is not a valid definition")
@@ -108,7 +108,12 @@ class Packet_Filter(object):
         """
         add packet filter
         """
-        self.__filters.append(filter_)
+        if isinstance(filter_, list):
+            # contain a list of Filter objects
+            self.__filters.extend(filter_)
+        else:
+            # single Filter object
+            self.__filters.append(filter_)
 
     def apply(self, af_packet, out_packet) -> bool:
 

@@ -16,12 +16,7 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
 ## Installation
 
 ### TODO
-    - Configuration_Parser
-      - use to load configuration
-        - log dir for unknown protocols
-        - log dir for submitter service logs
-        - url for for monitor server
-        - filter definitions 
+    
     - Add type hints and annotations and start using mypy
     - Packet_Submitter test case is useless, implement better one
     - [] Add functionality to group TCP packets into stream
@@ -44,6 +39,7 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
     - [] UDP outstanding functionality 
       - [] implement checksum verifier
     - [] manually added link layer protocols to class name lookup table (hack), implement with register functionality?
+    - refactor startup process
 
 ### Implemented
     - [x] Packet_Filter
