@@ -3,5 +3,7 @@
 ### raw packets used during testing ###
 **/*.lp
 **/*.lsp
+## config files
+**/*.cfg
 ### VScode ####
 .vscode/*

@@ -5,7 +5,7 @@ import queue
 import signal
 import time
 import os
-
+import configparser
 from .services import (
     Service_Manager,
     Packet_Parser,
@@ -26,7 +26,11 @@ def startup_manager(args):
             if not os.path.exists(args.load_config_file):
                 print(f"{args.load_config_file} does not exists")
                 sys.exit(1)
+
+            # start from configuration file load
+            start_from_configuration_file(args.load_config_file)
         elif args.interface:
+            # start on specified interface
             default_start_on_interface(args.interface)
     else:
 
@@ -43,6 +47,42 @@ def startup_manager(args):
             print("created configuration file")
 
         sys.exit(0)
+
+
+def start_from_configuration_file(config_path: str):
+
+    config = configparser.ConfigParser()
+
+    res = config.read(config_path)
+
+    if len(res) == 0:
+        print(f"Unsuccessfull at parsing {config_path}")
+        sys.exit(1)
+
+    # Required Paramaters
+    # InterfaceName
+
+    # Optional Paramaters
+    # UnknownProtocols
+    # Log
+    # Local
+    # Url
+    # Filter
+    # FilterAllApplicationTraffic
+    # RetryInterval
+
+    # check if interface name is provide and is valid
+    print(config.defaults())
+    print(config.sections())
+
+    if "ListenerService" in config.sections():
+        res = config.get("ListenerService", "InterfaceName", fallback=None)
+        print(res)
+    elif "interfacename" in config.defaults():
+
+        print(True)
+    else:
+        print(False)
 
 
 def default_start_on_interface(ifname: str):

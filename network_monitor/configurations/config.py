@@ -11,12 +11,14 @@ def generate_template_configuration(config_name: str):
 
     # defualt configuration variables use for development
     config["DEFAULT"] = {
+        "InterfaceName": "enp0s3",
         "UnknownProtocols": "./logs/application/unknown_protocols",
         "Log": "./logs/application/general",
         "Local": "./logs/submitter_service",
         "Url": "http://127.0.0.1:5000/packets",
         "Filter": {
             "AF_Packet": {"ifname": "lo"},
+            "IPv4": {"destination_address": "127.0.0.01"},
             "TCP": {"destination_port": 5000},
         },
     }
