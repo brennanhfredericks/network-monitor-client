@@ -1,0 +1,1 @@
+from .config import generate_template_configuration
