@@ -55,7 +55,7 @@ def ones_comp_add16(num1, num2):
 class Unknown(object):
     description = "Unknown Protocol"
     message: str
-    identifier: int
+    identifier: -99
 
     def __init__(self, message: str, identifier: int, raw_bytes: bytes):
 
@@ -70,6 +70,9 @@ class Unknown(object):
     def upper_layer(self):
 
         return None
+
+    def serialize(self):
+        return dataclasses.asdict(self)
 
 
 # https://stackoverflow.com/a/51286749

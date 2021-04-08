@@ -7,7 +7,7 @@ import base64
 import dataclasses
 
 from dataclasses import dataclass
-from .protocol_utils import get_mac_addr, EnhancedJSONEncoder
+from .protocol_utils import get_mac_addr, EnhancedJSONEncoder, Unknown
 from .layer import Layer_Protocols
 from .parsers import Protocol_Parser
 
@@ -155,7 +155,7 @@ class Packet_802_3(object):
 
 
 # manual hack to add link layer protocol to protocol lookup table
-
 Protocol_Parser._register_protocol_class_name("AF_Packet", AF_Packet)
 Protocol_Parser._register_protocol_class_name("Packet_802_3", Packet_802_3)
 Protocol_Parser._register_protocol_class_name("Packet_802_2", Packet_802_2)
+Protocol_Parser._register_protocol_class_name("Unknown", Unknown)
