@@ -67,11 +67,16 @@ if __name__ == "__main__":
             "AF_Packet": {"ifname": "lo"},
         }
     )
-
+    config.add_section("Filter1")
+    config["Filter1"]["Definition"] = json.dumps(
+        {
+            "IPv4": {},
+        }
+    )
     config_path = os.path.join(out_path, "test_filter_config.cfg")
     with open(config_path, "w") as fout:
         config.write(fout)
 
     start_from_configuration_file(
-        config_path, interrupt=True, interrupt_interval=60 * 5
+        config_path, interrupt=True, interrupt_interval=60 * 10
     )
