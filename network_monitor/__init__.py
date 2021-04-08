@@ -50,7 +50,9 @@ def startup_manager(args):
         sys.exit(0)
 
 
-def start_from_configuration_file(config_path: str):
+def start_from_configuration_file(
+    config_path: str, interrupt=False, interrupt_interval=1
+):
 
     config = configparser.ConfigParser()
 
@@ -170,10 +172,16 @@ def start_from_configuration_file(config_path: str):
 
     # blocking loop
     while True:
-        time.sleep(0.05)
+        time.sleep(interrupt_interval)
+
+        if interrupt:
+            os.kill(os.getpid(), signal.SIGINT)
 
 
 def default_start_on_interface(ifname: str):
+
+    # set output directory, #hack otherwise existing test will fail
+    Protocol_Parser.set_log_directory("./logger_output/unknown_protocols/")
 
     # check validate choice and start process
     service_manager = Service_Manager(args.interface)

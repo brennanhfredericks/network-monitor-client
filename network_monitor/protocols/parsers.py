@@ -15,16 +15,11 @@ class Parser:
     __protocol_parsers = {}
     __protocol_str_lookup = {}
 
-    def __init__(self, log_dir="./logger_output/unknown_protocols/"):
+    def __init__(self):
 
         # init layer protocols
         for layer_protocol in Layer_Protocols:
             self.__protocol_parsers[layer_protocol] = {}
-
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
-
-        self.__log = log_dir
 
         self.__fname = f"raw_unknown_protocols_{int(time.time())}.lp"
 

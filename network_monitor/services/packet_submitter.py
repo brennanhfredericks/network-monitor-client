@@ -64,7 +64,7 @@ class Submitter(object):
 
     async def _logs_available(self):
         "os list dir"
-        return os.listdir(self._log_dir)
+        return [f for f in os.listdir(self._log_dir) if f.endswith(".lsp")]
 
     async def _clear_logs(self):
         "remove logs and try to post"
