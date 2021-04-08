@@ -264,7 +264,7 @@ class IPv6(object):
         return self.__encap
 
     def serialize(self):
-        return json.dumps(self, cls=EnhancedJSONEncoder)
+        return dataclasses.asdict(self)
 
     def __parse_upper_layer_protocol(self, protocol, remaining_raw_bytes):
         # The values are shared with those used for the IPv4 protocol field
@@ -393,7 +393,7 @@ class LLDP(object):
         return {
             "Type": type_,
             "Length": length,
-            "Value": value,
+            "Value": base64.b64encode(value).decode("utf-8"),
         }, raw_bytes[length:]
 
     def raw(self):
