@@ -13,12 +13,18 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
   `python3 network_monitor.py -lg`
   - listen on network interface, requires superuser privileges
   `sudo python3 network_monitor.py -i <interface name> `
+  - generate configuration template file
+  `python3 network_monitor.py -gcf <config filename>`
+  - load configuration file
+  `python3 network_monitor.py -lcf <config filename>`
+  
 ## Installation
 
 ### TODO
-    
+    - Add verbose flag to inspect output, remove print functions and replace with stdout and stderr pipes
     - Add type hints and annotations and start using mypy
-    - Packet_Submitter test case is useless, implement better one
+    - Packet_Submitter test case is debug only, implement better one
+      - only notify once if monitor server is unavailable at start and end of application
     - [] Add functionality to group TCP packets into stream
 
     - [] 802.2 Packet
@@ -42,12 +48,20 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
     - refactor startup process
 
 ### Implemented
-    - [x] Packet_Filter
-      - [x] Add functionality to check if user defined filter is valid. if not valid raise ValueError
-      - [x] Able to add mutiple Filters
-      - [x] Able to compare attributes and return boolean result  
     
-    - [x] Network Listerner
+    # Configuration
+      - implemented defualt configuration for development purpose
+      - service paramaters are under different sections
+      - able to define multiple filters. the section should have "Filter" in name and "Definition" in a option. "Definition" value should be JSON format
+
+    - Packet_Filter
+      - Add functionality to check if user defined filter is valid. if not valid raise ValueError
+      - Able to add mutiple Filters
+      - Able to compare attributes and return boolean result
+      - Try to convert str to json if str input type  
+
+
+    - Network Listerner
       - [x] functionality listen on a single ethernet interface
     
     - [x] Packet Submitter
@@ -82,7 +96,9 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
     - basic command line interface to start the network-monitor with the following argument options
       - list all interfaces (-li, --list-interfaces)
       - list all gateways (-lg, --list-gateways)
-      - specify interface to monitor (-i, --interfaces) with interface name
+      - specify interface to monitor (-i, --interfaces) <interfacename>
+      - generate configuration template file (--gcf, --generate-configuration-file) <filename>
+      - load configuration file (--lcf,--load-configuration-file) <filename>
   
       
 
@@ -102,4 +118,4 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
     - The sniffer can prevent this by configuring a firewall to block ICMP traffic responses
     - currently using empty protocol objects as key index, which is larger than int, i.e. bytes usage
     - implemented filter comparison with generator lookups. could also implemented with dictionary. should compare peformance
-    - make thread loop asynchronous instead of blocking using with sleep, should remove constant block with sleep
+    - make thread loop asynchronous instead of blocking using sleep, should remove constant block with sleep

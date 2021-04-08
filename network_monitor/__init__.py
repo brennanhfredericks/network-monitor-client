@@ -149,7 +149,7 @@ def start_from_configuration_file(config_path: str):
         filter_application_packets=filterallapplicationtraffic
     )
 
-    # temporary
+    # regiter filters
     packet_filter.register(collect_filters)
 
     # start packet parser
