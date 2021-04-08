@@ -134,7 +134,7 @@ class Submitter(object):
             time_now - self._checked_for_logs > self.retryinterval
         ) and self._logs_written:
 
-            self._clear_logs()
+            await self._clear_logs()
             self._checked_for_logs = time.time()
 
 
