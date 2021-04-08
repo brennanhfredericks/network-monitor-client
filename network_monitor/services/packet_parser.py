@@ -127,7 +127,7 @@ class Packet_Filter(object):
             for p in out_protocols
         }
 
-        _p["AF_Packet"] = af_packet.serialize()
+        _p["AF_Packet"] = af_packet  # .serialize()
 
         res = []
         for filter_ in self.__filters:

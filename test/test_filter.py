@@ -71,3 +71,13 @@ def start_filter():
 
 def test_filter():
     start_filter()
+
+
+def configuration_file_filters():
+
+    dirs = os.listdir("configuration_output")
+    print(dirs)
+
+
+def test_configuration_file_filters():
+    configuration_file_filters()

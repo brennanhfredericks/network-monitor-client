@@ -18,6 +18,10 @@ from network_monitor import Packet_Submitter, Packet_Filter, Filter
 from network_monitor.filters import present_protocols
 from test_load_data import load_filev2
 
+url = "http://127.0.0.1:5000/packets"
+local = "./logs/submitter_service/"
+retryinterval = 300
+
 
 def submitter_logged_file():
     feeder = queue.Queue()
@@ -30,7 +34,7 @@ def submitter_logged_file():
     packet_filter = Packet_Filter()
     packet_filter.register(t0_filter)
 
-    packet_submitter = Packet_Submitter(feeder)
+    packet_submitter = Packet_Submitter(feeder, url, local, retryinterval)
 
     packet_submitter.start()
     for i, (af_packet, raw_packet) in enumerate(
@@ -78,7 +82,7 @@ def start_submitter():
     packet_filter = Packet_Filter()
     packet_filter.register(t0_filter)
 
-    packet_submitter = Packet_Submitter(feeder)
+    packet_submitter = Packet_Submitter(feeder, url, local, retryinterval)
 
     packet_submitter.start()
     for i, (af_packet, raw_packet) in enumerate(

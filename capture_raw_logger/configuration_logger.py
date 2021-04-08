@@ -72,4 +72,6 @@ if __name__ == "__main__":
     with open(config_path, "w") as fout:
         config.write(fout)
 
-    start_from_configuration_file(config_path, interrupt=True, interrupt_interval=60)
+    start_from_configuration_file(
+        config_path, interrupt=True, interrupt_interval=60 * 5
+    )

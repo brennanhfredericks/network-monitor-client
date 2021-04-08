@@ -19,9 +19,13 @@ from network_monitor.protocols import (
     ICMPv6,
     IGMP,
     LLDP,
+    Protocol_Parser,
 )
 from network_monitor.filters import get_protocol
 from test_load_data import load_file, load_unknown_file
+
+
+Protocol_Parser.set_log_directory("./logs/application/unknown_protocols")
 
 
 def ipv4_packets():
