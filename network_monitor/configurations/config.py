@@ -2,6 +2,7 @@ import configparser
 import os
 import netifaces
 import re
+import json
 from collections import namedtuple
 
 from ..services import Filter

@@ -53,57 +53,57 @@ def startup_manager(args):
 def start_from_configuration_file(
     config_path: str, interrupt=False, interrupt_interval=1
 ):
+    try:
+        config = load_configuration(config_path)
+    except Exception as e:
+        print(e)
+    else:
 
-    config = configparser.ConfigParser()
+        # parser output directory
+        Protocol_Parser.set_log_directory(config.UnknwownProtocols)
 
-    res = config.read(config_path)
+        # check validate choice and start process
+        service_manager = Service_Manager(config.InterfaceName)
+        input_queue = queue.Queue()
+        output_queue = queue.Queue()
 
-    if len(res) == 0:
-        print(f"Unsuccessfull at parsing {config_path}")
-        sys.exit(1)
+        # start network listener
+        interface_listener = Interface_Listener(config.InterfaceName, input_queue)
+        service_manager.start_service("interface listener", interface_listener)
 
-    # parser output directory
-    Protocol_Parser.set_log_directory(unknownprotocols)
+        # filter application post request to monitor service
+        packet_filter = Packet_Filter(
+            filter_application_packets=config.FilterAllApplicationTraffic
+        )
 
-    # check validate choice and start process
-    service_manager = Service_Manager(ifname)
-    input_queue = queue.Queue()
-    output_queue = queue.Queue()
+        # regiter filters
+        packet_filter.register(config.Filters)
 
-    # start network listener
-    interface_listener = Interface_Listener(ifname, input_queue)
-    service_manager.start_service("interface listener", interface_listener)
+        # start packet parser
+        packet_parser = Packet_Parser(input_queue, output_queue, packet_filter)
+        service_manager.start_service("packet parser", packet_parser)
 
-    # filter application post request to monitor service
-    packet_filter = Packet_Filter(
-        filter_application_packets=filterallapplicationtraffic
-    )
+        # start packet submitter
+        packet_submitter = Packet_Submitter(
+            output_queue, config.Url, config.Local, config.RetryInterval
+        )
 
-    # regiter filters
-    packet_filter.register(collect_filters)
+        service_manager.start_service("packet submitter", packet_submitter)
 
-    # start packet parser
-    packet_parser = Packet_Parser(input_queue, output_queue, packet_filter)
-    service_manager.start_service("packet parser", packet_parser)
+        # exit cleanly
+        def signal_handler(sig, frame):
+            service_manager.stop_all_services()
+            sys.exit(0)
 
-    # start packet submitter
-    packet_submitter = Packet_Submitter(output_queue, url, local, retryinterval)
-    service_manager.start_service("packet submitter", packet_submitter)
+        signal.signal(signal.SIGTSTP, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
 
-    # exit cleanly
-    def signal_handler(sig, frame):
-        service_manager.stop_all_services()
-        sys.exit(0)
+        # blocking loop
+        while True:
+            time.sleep(interrupt_interval)
 
-    signal.signal(signal.SIGTSTP, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-
-    # blocking loop
-    while True:
-        time.sleep(interrupt_interval)
-
-        if interrupt:
-            os.kill(os.getpid(), signal.SIGINT)
+            if interrupt:
+                os.kill(os.getpid(), signal.SIGINT)
 
 
 def default_start_on_interface(ifname: str):

@@ -75,9 +75,9 @@ class Filter(object):
     def apply(self, packet: dict):
 
         res = []
-
         for proto_name, proto_attrs in self.definition.items():
             if proto_name in packet.keys():
+
                 if not proto_attrs:
                     res.append(True)
                 else:
@@ -127,7 +127,11 @@ class Packet_Filter(object):
             for p in out_protocols
         }
 
-        _p["AF_Packet"] = af_packet  # .serialize()
+        # hack for older test to pass. in order test the af_packet is load from log as json
+        if not isinstance(af_packet, dict):
+            _p["AF_Packet"] = af_packet.serialize()
+        else:
+            _p["AF_Packet"] = af_packet
 
         res = []
         for filter_ in self.__filters:

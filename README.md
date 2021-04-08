@@ -22,7 +22,6 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
 
 ### TODO
     - Default should filter all packets from 'lo' interface
-    - Abstract config parser from __init__ to configuration 
     - Add verbose flag to inspect output, remove print functions and replace with stdout and stderr pipes
     - Add type hints and annotations and start using mypy
     - Packet_Submitter test case is debug only, implement better one
