@@ -6,6 +6,17 @@ from collections.abc import Iterable
 import pytest
 
 
+def load_submitter_local_log(filename):
+
+    if not os.path.exists(filename):
+        raise ValueError("invalid filename %s" % filename)
+
+    with open(filename, "r") as fin:
+
+        for line in fin:
+            yield json.loads(line)
+
+
 def load_filev2(filename, log_dir="./data"):
     """load file and return raw pack bytes"""
 

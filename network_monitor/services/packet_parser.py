@@ -72,7 +72,7 @@ class Filter(object):
 
         return definition
 
-    def apply(self, packet):
+    def apply(self, packet: dict):
 
         res = []
 

@@ -4,6 +4,7 @@ import binascii
 import os
 import time
 import sys
+import configparser
 
 from network_monitor.protocols import (
     Packet_802_2,
@@ -13,9 +14,9 @@ from network_monitor.protocols import (
     IPv4,
     Protocol_Parser,
 )
-from network_monitor import Packet_Filter, Filter
+from network_monitor import Packet_Filter, Filter, load_configuration
 from network_monitor.filters import present_protocols
-from test_load_data import load_filev2
+from test_load_data import load_filev2, load_submitter_local_log
 
 # increase test coverage for filter implementation
 def start_filter():
@@ -74,9 +75,29 @@ def test_filter():
 
 
 def configuration_file_filters():
+    base_dir = "configuration_output"
+    dirs = os.listdir(base_dir)
+    config = configparser.ConfigParser()
+    for p in dirs:
+        p_ = os.path.join(base_dir, p)
+        files = [os.path.join(p_, f) for f in os.listdir(p_)]
 
-    dirs = os.listdir("configuration_output")
-    print(dirs)
+        conf_fname = files[0] if files[0].endswith(".cfg") else files[1]
+        output_fname = files[0] if files[0].endswith(".lsp") else files[1]
+
+        print(conf_fname, output_fname)
+
+        config = load_configuration(conf_fname)
+        packet_filter = Packet_Filter()
+
+        res = []
+        # load local packets
+        for packet in load_submitter_local_log(output_fname):
+            # packet
+            for filtr in config.Filters:
+                res.append(filtr.apply(packet))
+
+    assert any(res) == False
 
 
 def test_configuration_file_filters():

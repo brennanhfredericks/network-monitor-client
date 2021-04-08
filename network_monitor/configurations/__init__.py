@@ -1,1 +1,1 @@
-from .config import generate_template_configuration
+from .config import generate_configuration_template, load_configuration
