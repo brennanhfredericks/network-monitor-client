@@ -203,7 +203,9 @@ class IPv6_Ext_Headers(object):
                 new_ext_header, ext_header_data, r_raw_bytes = parse_header(r_raw_bytes)
 
                 # need to implement Extion headers parsers to decode headers
-                self._headers.append((ext_header, ext_header_data))
+                self._headers.append(
+                    (ext_header, base64.b64encode(ext_header_data).decode("utf-8"))
+                )
                 ext_header = new_ext_header
 
             return self._headers, ext_header, r_raw_bytes
