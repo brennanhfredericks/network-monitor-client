@@ -33,13 +33,14 @@ class IPv4(object):
     ECN: int
     total_length: int
     identification: int
-    flags = int
+    flags: int
     fragment_offset: int
     TTL: int
     protocol: int
     header_checksum: int
     source_address: str
     destination_address: str
+    options: dict
 
     def __init__(self, raw_bytes):
 
@@ -133,7 +134,7 @@ class IPv4(object):
             "Copied": copied,
             "Option Class": klass,
             "Option Number": number,
-            "Option Data": __data,
+            "Option Data": base64.b64encode(__data).decode("utf-8"),
         }
 
     def raw(self):

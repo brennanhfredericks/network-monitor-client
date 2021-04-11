@@ -78,7 +78,7 @@ class Packet_802_2(object):
             self.control = __ctl
             self.__parse_upper_layer_protocol(raw_bytes[3:])
         else:
-            __ctl = struct.unpack("! x x H", raw_bytes[:4])
+            _, _, __ctl = struct.unpack("! B B H", raw_bytes[:4])
             self.control = __ctl
             self.__parse_upper_layer_protocol(raw_bytes[4:])
         self._LSAP_info = {}
