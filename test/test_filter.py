@@ -40,7 +40,7 @@ def start_filter():
     for i, (af_packet, raw_bytes) in enumerate(
         load_filev2(
             "raw2_protocols_1617213286_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
-            log_dir="./remote_data",
+            log_dir="./test/remote_data",
         )
     ):
 
@@ -75,7 +75,7 @@ def test_filter():
 
 
 def configuration_file_filters():
-    base_dir = "configuration_output"
+    base_dir = "./test/configuration_output"
     dirs = os.listdir(base_dir)
     config = configparser.ConfigParser()
     for p in dirs:

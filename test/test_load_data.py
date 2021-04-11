@@ -17,7 +17,7 @@ def load_submitter_local_log(filename):
             yield json.loads(line)
 
 
-def load_filev2(filename, log_dir="./data"):
+def load_filev2(filename, log_dir="./test/data"):
     """load file and return raw pack bytes"""
 
     path = None
@@ -49,7 +49,7 @@ def load_filev2(filename, log_dir="./data"):
 
 
 # should support path, str
-def load_file(filename, log_dir="./data"):
+def load_file(filename, log_dir="./test/data"):
     """load file and return raw pack bytes"""
 
     path = None
@@ -106,7 +106,7 @@ def test_load_file_tuple_fail():
     load_file(("raw_ipv4_output.lp", "raw_ipv6_output.lp", 1))
 
 
-def load_unknown_file(filename, log_dir="./data"):
+def load_unknown_file(filename, log_dir="./test/data"):
     """load raw unknown packets"""
     path = None
     if isinstance(filename, str):

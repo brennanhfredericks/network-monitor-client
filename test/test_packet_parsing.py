@@ -1,6 +1,6 @@
 import sys
 
-sys.path.insert(0, "../")
+sys.path.insert(0, "./")
 
 import queue
 import threading
@@ -147,7 +147,7 @@ def any_packets():
 
     for af_packet, packet in load_filev2(
         "raw2_protocols_1617213286_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
-        log_dir="./remote_data",
+        log_dir="./test/remote_data",
     ):
 
         if af_packet["protocol"] > 1500:

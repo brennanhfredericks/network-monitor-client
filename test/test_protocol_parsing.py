@@ -1,6 +1,6 @@
 import sys
 
-sys.path.insert(0, "../")
+sys.path.insert(0, "./")
 
 import queue
 import threading
@@ -38,7 +38,7 @@ def ipv4_packets():
             "raw_protocols_1616954194_TCP_UDP.lp",
             "raw_protocols_1616954194_TCP_UDP.lp",
         ],
-        log_dir="./remote_data",
+        log_dir="./test/remote_data",
     ):
 
         out_packet = Packet_802_3(packet)
@@ -69,7 +69,7 @@ def ipv6_packets():
             "raw_protocols_1616954194_TCP_UDP.lp",
             "raw_protocols_1616954194_TCP_UDP.lp",
         ],
-        log_dir="./remote_data",
+        log_dir="./test/remote_data",
     ):
 
         out_packet = Packet_802_3(packet)
@@ -94,7 +94,7 @@ def arp_packets():
     """ test arp parsing """
     res = []
     for packet in load_file(
-        "raw_protocols_1616955371_ARP_ICMP_ICMPv6_IGMP.lp", log_dir="./remote_data"
+        "raw_protocols_1616955371_ARP_ICMP_ICMPv6_IGMP.lp", log_dir="./test/remote_data"
     ):
 
         out_packet = Packet_802_3(packet)
@@ -124,7 +124,7 @@ def tcp_packets():
             "raw_protocols_1616954635_TCP_UDP.lp",
             "raw_protocols_1616954635_TCP_UDP.lp",
         ],
-        log_dir="./remote_data",
+        log_dir="./test/remote_data",
     ):
 
         out_packet = Packet_802_3(packet)
@@ -154,7 +154,7 @@ def udp_packets():
             "raw_protocols_1616954635_TCP_UDP.lp",
             "raw_protocols_1616954635_TCP_UDP.lp",
         ],
-        log_dir="./remote_data",
+        log_dir="./test/remote_data",
     ):
 
         out_packet = Packet_802_3(packet)
@@ -179,7 +179,7 @@ def icmp_packets():
     """ test icmp parsing """
     res = []
     for packet in load_file(
-        "raw_protocols_1617059888_ARP_ICMP_ICMPv6_IGMP.lp", log_dir="./remote_data"
+        "raw_protocols_1617059888_ARP_ICMP_ICMPv6_IGMP.lp", log_dir="./test/remote_data"
     ):
 
         out_packet = Packet_802_3(packet)
@@ -204,7 +204,7 @@ def icmpv6_packets():
     """ test icmpv6 parsing """
     res = []
     for packet in load_file(
-        "raw_protocols_1616955371_ARP_ICMP_ICMPv6_IGMP.lp", log_dir="./remote_data"
+        "raw_protocols_1616955371_ARP_ICMP_ICMPv6_IGMP.lp", log_dir="./test/remote_data"
     ):
 
         out_packet = Packet_802_3(packet)
@@ -230,7 +230,7 @@ def igmp_packets():
     """ test igmp parsing """
     res = []
     for packet in load_file(
-        "raw_protocols_1616955371_ARP_ICMP_ICMPv6_IGMP.lp", log_dir="./remote_data"
+        "raw_protocols_1616955371_ARP_ICMP_ICMPv6_IGMP.lp", log_dir="./test/remote_data"
     ):
 
         out_packet = Packet_802_3(packet)
@@ -264,7 +264,7 @@ def unknown_packets():
             "raw_unknown_protocols_1616955371.lp",
             "raw_unknown_protocols_1617059887.lp",
         ],
-        log_dir="./remote_data",
+        log_dir="./test/remote_data",
     ):
 
         out_proto = LLDP(packet)
