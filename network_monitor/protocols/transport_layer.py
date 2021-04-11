@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from .layer import Layer_Protocols
 from .protocol_utils import EnhancedJSONEncoder
 
-collect_protocols = []  # (level,identifier,parser)
+from .parsers import Protocol_Parser
 
 
 @dataclass
@@ -92,7 +92,7 @@ class TCP(object):
         return dataclasses.asdict(self)
 
 
-collect_protocols.append((Layer_Protocols.IP_protocols, 6, TCP))
+Protocol_Parser.register(Layer_Protocols.IP_protocols, 6, TCP)
 
 
 @dataclass
@@ -133,8 +133,4 @@ class UDP(object):
         return dataclasses.asdict(self)
 
 
-collect_protocols.append((Layer_Protocols.IP_protocols, 17, UDP))
-
-
-def get_transport_layer_parsers():
-    return collect_protocols
+Protocol_Parser.register(Layer_Protocols.IP_protocols, 17, UDP)

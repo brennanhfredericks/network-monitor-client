@@ -40,7 +40,7 @@ def submitter_logged_file():
     for i, (af_packet, raw_packet) in enumerate(
         load_filev2(
             "raw2_protocols_1617213286_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
-            log_dir="./remote_data",
+            log_dir="./test/remote_data",
         )
     ):
 
@@ -68,8 +68,7 @@ def submitter_logged_file():
 
 def test_submitter_logger():
 
-    # submitter_logged_file()
-    ...
+    submitter_logged_file()
 
 
 def start_submitter():
@@ -89,7 +88,7 @@ def start_submitter():
     for i, (af_packet, raw_packet) in enumerate(
         load_filev2(
             "raw2_protocols_1617213286_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
-            log_dir="./remote_data",
+            log_dir="./test/remote_data",
         )
     ):
 
@@ -111,5 +110,4 @@ def start_submitter():
 
 def test_submitter_useless():
 
-    # start_submitter()
-    ...
+    start_submitter()

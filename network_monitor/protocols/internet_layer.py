@@ -19,9 +19,6 @@ from .parsers import Protocol_Parser
 from .layer import Layer_Protocols
 
 
-collect_protocols = []  # (level,identifier,parser)
-
-
 @dataclass
 class IPv4(object):
 
@@ -154,7 +151,7 @@ class IPv4(object):
         )
 
 
-collect_protocols.append((Layer_Protocols.Ethertype, 2048, IPv4))
+Protocol_Parser.register(Layer_Protocols.Ethertype, 2048, IPv4)
 
 
 class IPv6_Ext_Headers(object):
@@ -277,7 +274,7 @@ class IPv6(object):
         )
 
 
-collect_protocols.append((Layer_Protocols.Ethertype, 34525, IPv6))
+Protocol_Parser.register(Layer_Protocols.Ethertype, 34525, IPv6)
 
 
 @dataclass
@@ -343,7 +340,7 @@ class ARP(object):
             return str(proto_addr)
 
 
-collect_protocols.append((Layer_Protocols.Ethertype, 2054, ARP))
+Protocol_Parser.register(Layer_Protocols.Ethertype, 2054, ARP)
 
 
 @dataclass
@@ -365,7 +362,7 @@ class CDP(object):
         return None
 
 
-collect_protocols.append((Layer_Protocols.Ethertype, 8192, CDP))
+Protocol_Parser.register(Layer_Protocols.Ethertype, 8192, CDP)
 
 
 @dataclass
@@ -409,7 +406,32 @@ class LLDP(object):
         return dataclasses.asdict(self)
 
 
-collect_protocols.append((Layer_Protocols.Ethertype, 35020, LLDP))
+Protocol_Parser.register(Layer_Protocols.Ethertype, 35020, LLDP)
+
+
+@dataclass
+class Xerox(object):
+    description = "Xerox Experimental"
+    identifier = 103
+    message: str
+
+    def __init__(self, raw_bytes):
+        (__msg,) = struct.unpack(f"! {len(raw_bytes)}s", raw_bytes)
+
+        self.message = base64.b64encode(__msg).decode("utf-8")
+        self._raw_bytes = raw_bytes
+
+    def raw(self):
+        return self._raw_bytes
+
+    def upper_layer(self):
+        return None
+
+    def serialize(self):
+        return dataclasses.asdict(self)
+
+
+Protocol_Parser.register(Layer_Protocols.Ethertype, 103, Xerox)
 
 
 @dataclass
@@ -443,7 +465,7 @@ class IGMP(object):
         return dataclasses.asdict(self)
 
 
-collect_protocols.append((Layer_Protocols.IP_protocols, 2, IGMP))
+Protocol_Parser.register(Layer_Protocols.IP_protocols, 2, IGMP)
 
 
 @dataclass
@@ -474,7 +496,7 @@ class ICMPv6(object):
         return dataclasses.asdict(self)
 
 
-collect_protocols.append((Layer_Protocols.IP_protocols, 58, ICMPv6))
+Protocol_Parser.register(Layer_Protocols.IP_protocols, 58, ICMPv6)
 
 
 @dataclass
@@ -508,8 +530,4 @@ class ICMP(object):
         return dataclasses.asdict(self)
 
 
-collect_protocols.append((Layer_Protocols.IP_protocols, 1, ICMP))
-
-
-def get_internet_layer_parsers():
-    return collect_protocols
+Protocol_Parser.register(Layer_Protocols.IP_protocols, 1, ICMP)
