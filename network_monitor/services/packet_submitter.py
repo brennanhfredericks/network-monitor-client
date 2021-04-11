@@ -92,7 +92,8 @@ class Submitter(object):
                         aiohttp.ClientError,
                         aiohttp.http_exceptions.HttpProcessingError,
                     ) as e:
-                        print("clear logs: aio exception: ", e)
+                        print("Monitor server not available")
+                        # print("clear logs: aio exception: ", e)
                         break
                     except Exception as e:
                         print("clear logs: non aio exception: ", e)
@@ -108,7 +109,7 @@ class Submitter(object):
             # print("aio exception: ", e)
             await self._log(data)
         except Exception as e:
-            print(data)
+
             print("non aio exception: ", e)
 
     async def _process(self):
