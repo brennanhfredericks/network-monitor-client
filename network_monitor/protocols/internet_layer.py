@@ -370,17 +370,17 @@ class LLDP(object):
 
     description = "35020 IEEE Std 802.1AB - Link Layer Discovery Protocol"
     identifier = 35020
-    tlvs: list
+    typelengthvalue: list
 
     def __init__(self, raw_bytes):
 
         #
         tlv_dict, r_bytes = self.__parse_tlv(raw_bytes)
-        self.tlvs = [tlv_dict]
+        self.typelengthvalue = [tlv_dict]
         while tlv_dict["Type"] != 0:
             tlv_dict, r_bytes = self.__parse_tlv(r_bytes)
 
-            self.tlvs.append(tlv_dict)
+            self.typelengthvalue.append(tlv_dict)
 
         self._raw_bytes = raw_bytes
 
