@@ -88,6 +88,8 @@ class IPv4(object):
 
         self.__raw_bytes = raw_bytes
 
+        print(self.serialize())
+
     def __verify_checksum(self, raw_bytes_header: bytes):
         """ verify checksum is correct """
 

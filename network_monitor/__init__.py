@@ -33,6 +33,7 @@ def startup_manager(args):
         elif args.interface:
             # start on specified interface
             default_start_on_interface(args.interface)
+
     else:
 
         if args.list_gateways:
@@ -93,6 +94,11 @@ def start_from_configuration_file(
         # exit cleanly
         def signal_handler(sig, frame):
             service_manager.stop_all_services()
+
+            # change folder permission to user
+            import subprocess
+
+            subprocess.run(["chown", "-R", "sc:1000", "./logs"])
             sys.exit(0)
 
         signal.signal(signal.SIGTSTP, signal_handler)

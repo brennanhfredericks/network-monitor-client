@@ -12,7 +12,9 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
   - list gateways
   `python3 network_monitor.py -lg`
   - listen on network interface, requires superuser privileges
-  - issue log file are stored by root. shouldn't store logs files with root attributes
+  - [x] issue log file are stored by root. shouldn't store logs files with root attributes
+      - [x] fixed issue. when script is stopped, it issue  `chown` command to change directory ownership. user hard coded
+      - [ ] should only change the ownership of the files written by the application.  user?
   `sudo python3 network_monitor.py -i <interface name> `
   - generate configuration template file
   `python3 network_monitor.py -gcf <config filename>`
