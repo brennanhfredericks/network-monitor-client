@@ -127,18 +127,18 @@ def generate_configuration_template(config_name: str):
 # Specify interface on which the ethernet listener service should be started.
 # Requires super user priviliages to change the interface to operate in promiscous
 [ListenerService]
-# InterfaceName = "enp0s3"
+# InterfaceName = enp0s3
 
 # Specify application settings. global settings some of which affect other services.
 [Application]
-# Log = "./logs/application/general/"
-# UnknownProtocols = "./logs/application/unknown_protocols"
+# Log = ./logs/application/general/
+# UnknownProtocols = ./logs/application/unknown_protocols
 # FilterAllApplicationTraffic = True
 
 # Specify submitter service setting.
 [SubmitterService]
-# Local = "./logs/submitter_service/"
-# Url = "http://127.0.0.1:5000/packets"
+# Local = ./logs/submitter_service/
+# Url = http://127.0.0.1:5000/packets
 # RetryInterval = 300
 
 # configure filter settings
@@ -147,7 +147,7 @@ def generate_configuration_template(config_name: str):
 
 # additional config string
 [Filter1]
-# Definition = {"ICMP":{}}
+# Definition ={"Filter": {"AF_Packet": {"ifname": "lo"},"IPv4": {"destination_address": "127.0.0.01"},"TCP": {"destination_port": 5000}}
     """
 
     # defualt configuration variables use for development
@@ -157,11 +157,6 @@ def generate_configuration_template(config_name: str):
         "Log": "./logs/application/general",
         "Local": "./logs/submitter_service",
         "Url": "http://127.0.0.1:5000/packets",
-        "Filter": {
-            "AF_Packet": {"ifname": "lo"},
-            "IPv4": {"destination_address": "127.0.0.01"},
-            "TCP": {"destination_port": 5000},
-        },
     }
 
     with open(os.path.join("./", f"{config_name}"), "w") as fout:

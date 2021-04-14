@@ -5,5 +5,10 @@
 **/*.lsp
 ## config files
 **/*.cfg
+**/*.ini
+.env/*
+.ENV*
+.config/*
+.CONFIG/*
 ### VScode ####
 .vscode/*
