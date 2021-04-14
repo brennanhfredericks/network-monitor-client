@@ -25,9 +25,7 @@ Each protocol is defined in the appropriate layer and register, unknown protocol
 
 ### TODO
 
-    - lookat clear_logs() and improve
-   
- 
+    - filter all application flag not implemented 
     - Default should filter all packets from 'lo' interface
     - Add verbose flag to inspect output, remove print functions and replace with stdout and stderr pipes
     - Add type hints and annotations and start using mypy

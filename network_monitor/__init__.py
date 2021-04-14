@@ -97,8 +97,22 @@ def start_from_configuration_file(
 
             # change folder permission to user
             import subprocess
+            from pwd import getpwnam
 
-            subprocess.run(["chown", "-R", "sc:1000", "./logs"])
+            # change ownership from root to the login user
+            user_name = os.getlogin()
+            user_attrs = getpwnam(user_name)
+
+            subprocess.run(
+                [
+                    "chown",
+                    "-R",
+                    f"{user_name}:{user_attrs.pw_gid}",
+                    config.Log,
+                    config.Local,
+                    config.UnknwownProtocols,
+                ]
+            )
             sys.exit(0)
 
         signal.signal(signal.SIGTSTP, signal_handler)
