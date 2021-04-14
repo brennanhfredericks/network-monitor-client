@@ -91,6 +91,11 @@ def start_from_configuration_file(
 
         service_manager.start_service("packet submitter", packet_submitter)
 
+        for f in [config.Log, config.Local, config.UnknwownProtocols]:
+
+            if not os.path.exists(f):
+                os.makedirs(f)
+
         # exit cleanly
         def signal_handler(sig, frame):
             service_manager.stop_all_services()
