@@ -39,6 +39,7 @@ class Submitter(object):
             # check if files in directory. if files process and send to server
             self._log_dir = log_dir
             # process existing files
+
             asyncio.run(self._clear_logs())
 
             self._checked_for_logs = time.time()
@@ -150,19 +151,33 @@ class Packet_Submitter(object):
         retryinterval: int,
     ):
         self._data_queue = output_queue
-        self._submitter = Submitter(url, log_dir, retryinterval=retryinterval)
+
+        try:
+            self._submitter = Submitter(
+                url, log_dir, retryinterval=retryinterval)
+        except KeyboardInterrupt:
+            raise ValueError("process of clearing logs was interrupted")
 
     def _submit(self):
-
+        error = False
         while self._sentinal or not self._data_queue.empty():
 
             if not self._data_queue.empty():
-                asyncio.run(self._submitter.submit(self._data_queue.get()))
+                try:
+                    asyncio.run(self._submitter.submit(self._data_queue.get()))
+                except KeyboardInterrupt:
+                    print("process of submitting packets was interrupted")
+                    error = True
+                    break
             else:
                 time.sleep(0.01)
-        # write any data in buffer to disk
-        asyncio.run(self._submitter._process())
-        asyncio.run(self._submitter._clear_logs())
+        if not error:
+            try:
+                # write any data in buffer to
+                asyncio.run(self._submitter._process())
+                asyncio.run(self._submitter._clear_logs())
+            except KeyboardInterrupt:
+                print("process of clearing buffer and logs were interrupted")
 
     def start(self):
         self._sentinal = True

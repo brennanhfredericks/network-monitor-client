@@ -69,7 +69,8 @@ def start_from_configuration_file(
         output_queue = queue.Queue()
 
         # start network listener
-        interface_listener = Interface_Listener(config.InterfaceName, input_queue)
+        interface_listener = Interface_Listener(
+            config.InterfaceName, input_queue)
         service_manager.start_service("interface listener", interface_listener)
 
         # filter application post request to monitor service
@@ -137,12 +138,12 @@ def default_start_on_interface(ifname: str):
     Protocol_Parser.set_log_directory("./logger_output/unknown_protocols/")
 
     # check validate choice and start process
-    service_manager = Service_Manager(args.interface)
+    service_manager = Service_Manager(ifname)
     input_queue = queue.Queue()
     output_queue = queue.Queue()
 
     # start network listener
-    interface_listener = Interface_Listener(args.interface, input_queue)
+    interface_listener = Interface_Listener(ifname, input_queue)
     service_manager.start_service("interface listener", interface_listener)
 
     # filter application post request to monitor service
@@ -167,13 +168,37 @@ def default_start_on_interface(ifname: str):
     packet_parser = Packet_Parser(input_queue, output_queue, packet_filter)
     service_manager.start_service("packet parser", packet_parser)
 
-    # start packet submitter
-    packet_submitter = Packet_Submitter(output_queue)
+    # start packet
+    try:
+        packet_submitter = Packet_Submitter(
+            output_queue, "http://192.168.88.247:5000", "./logs", 30)
+    except Exception as e:
+        print(e)
+        service_manager.stop_all_services()
+        sys.exit(1)
     service_manager.start_service("packet submitter", packet_submitter)
 
     # exit cleanly
     def signal_handler(sig, frame):
         service_manager.stop_all_services()
+        # change folder permission to user
+        import subprocess
+        from pwd import getpwnam
+
+        # change ownership from root to the login user
+        user_name = os.getlogin()
+        user_attrs = getpwnam(user_name)
+
+        subprocess.run(
+            [
+                "chown",
+                "-R",
+                f"{user_name}:{user_attrs.pw_gid}",
+                config.Log,
+                config.Local,
+                config.UnknwownProtocols,
+            ]
+        )
         sys.exit(0)
 
     signal.signal(signal.SIGTSTP, signal_handler)

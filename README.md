@@ -66,10 +66,15 @@
 
 ### todo:
 
+#### Known issues:
+  - Interuption on async function not exiting cleanly
+  - 
+
 #### high priority
 
   - Implement flag to filter all traffic generate by application from being send to network monitor server
-  - Implement logging functionality 
+  - Implement logging functionality
+  - Service init can raise exception, handle case 
   - Add type hints and annotations and start using `mypy`
 
 #### medium priority
