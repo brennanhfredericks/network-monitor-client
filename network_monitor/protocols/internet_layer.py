@@ -314,7 +314,7 @@ class ARP(object):
             return get_ipv6_addr(proto_addr)
         else:
             # add logging functionality here
-            asyncio.run(logger.warning(
+            asyncio.create_task(logger.warning(
                 f" address ARP decoding not implemented for {self.PTYPE}, address {proto_addr}"
             ))
             return str(proto_addr)
