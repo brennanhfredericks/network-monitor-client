@@ -1,72 +1,32 @@
-import netifaces
-import collections
-import queue
 import time
 import sys
+import asyncio
+from collections import OrderedDict
+from asyncio import Task
+
+from typing import Optional, Dict, Any
 
 
 class Service_Manager(object):
-    def __init__(self, interface_name):
-        self._ifname = interface_name
-        self._ifaddress = netifaces.ifaddresses(interface_name)
-        self._services = collections.OrderedDict()
+    def __init__(self) -> None:
 
-    @property
-    def interface_addresses(self):
-        return self._ifaddress
+        # hold a ordered mapping of Task
+        self._services: OrderedDict[str, Task] = OrderedDict()
 
-    @property
-    def address_family(self):
-        return list(self._ifaddress.keys())
-
-    @property
-    def ipv4_address(self):
-
-        if netifaces.AF_INET in self._ifaddress.keys():
-            return self._ifaddress[netifaces.AF_INET]
-
-        return None
-
-    @property
-    def ipv6_address(self):
-
-        if netifaces.AF_INET6 in self._ifaddress.keys():
-            return self._ifaddress[netifaces.AF_INET6]
-
-        return None
-
-    @property
-    def link_layer_address(self):
-
-        if netifaces.AF_LINK in self._ifaddress.keys():
-            return self._ifaddress[netifaces.AF_LINK]
-
-        return None
-
-    def start_service(self, service_name: str, service_obj):
-        # start service
-        service_obj.start()
-
-        # hack that wait to check if any errors are pushed on to data queue
-        time.sleep(0.1)
-
-        if service_obj._data_queue.qsize() == 2:
-            item = service_obj._data_queue.get()
-            if isinstance(item, Exception):
-                (type_, value, traceback) = service_obj._data_queue.get()
-                print(f"Error starting {service_name} service: {item}")
-
-                self.stop_all_services()
-                sys.exit(0)
-
+    def add_service(self, service_name: str, service_obj: Any):
         # add service to Order dict
         self._services[service_name] = service_obj
 
-    def stop_all_services(self):
+    def stop_service(self, service_name):
+        # implement later
+        raise NotImplemented
+
+    async def stop_all_services(self):
 
         for k, v in self._services.items():
-            # stop service and join thread
-            v.stop()
-            print(f"{k} service stopped")
-
+            # cancel asynchronous task
+            v.cancel()
+            print(f"Requestd {k} service to stop")
+        await asyncio.gather(*self._services.values(), return_exceptions=True)
+        print("All services stopped")
         self._services.clear()

@@ -23,7 +23,7 @@ from .protocols import Protocol_Parser
 from .configurations import generate_configuration_template, DevConfig, load_config_from_file
 
 
-async def a_main(interface_name: Optional[str] = None, configuration_file: Optional[str] = None):
+async def a_main(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
 
     # load default configuration and override with user values, if any
     app_config: Optional[DevConfig] = None
@@ -36,10 +36,17 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
         # load file and read data. Override default values with new value
         app_config = load_config_from_file(configuration_file)
 
-    print(app_config)
+    # use config to setup everything
+
+    # interface listener service add raw binary data to queue
+    raw_queue: asyncio.Queue = asyncio.Queue()
+    # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
+    processed: asyncio.Queue = asyncio.Queue()
+
+    # configure listerner service
 
 
-async def startup_manager(args):
+async def startup_manager(args) -> None:
 
     if args.interface or args.load_config_file:
 
@@ -76,7 +83,7 @@ async def startup_manager(args):
             print("created configuration file")
 
 
-def args_parser():
+def args_parser() -> None:
 
     basic_parser = argparse.ArgumentParser(
         description="monitor ethernet network packets.", add_help=True
