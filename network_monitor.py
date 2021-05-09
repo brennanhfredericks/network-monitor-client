@@ -1,5 +1,5 @@
-from network_monitor import main
+from network_monitor import args_parser
 
 if __name__ == "__main__":
 
-    exit(main())
+    exit(args_parser())

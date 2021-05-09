@@ -2,7 +2,7 @@ import queue
 import threading
 import time
 import json
-
+from typing import Dict, Any
 from dataclasses import dataclass
 
 from ..protocols import AF_Packet, Packet_802_3, Packet_802_2, Protocol_Parser
@@ -26,10 +26,17 @@ from ..filters.deep_walker import flatten_protocols
 
 @dataclass
 class Filter(object):
+    """
+        Instantiate a new filter
+
+        name: provide a name for the filter
+        definition: dictionary containting the keys and values ti match with
+
+    """
     name: str
     definition: dict
 
-    def __init__(self, name, definition):
+    def __init__(self, name: str, definition: Dict[str, Any]):
         self.name = name
         # check if definiion is valid
         self.definition = self._check_valid_definition(definition)
@@ -43,7 +50,8 @@ class Filter(object):
                 try:
                     definition = json.loads(definition)
                 except Exception as e:
-                    raise ValueError(f"{definition} is not a valid definition: {e}")
+                    raise ValueError(
+                        f"{definition} is not a valid definition: {e}")
 
             else:
                 raise ValueError(f"{definition} is not a valid definition")
@@ -72,7 +80,7 @@ class Filter(object):
 
         return definition
 
-    def apply(self, packet: dict):
+    def apply(self, packet: dict) -> bool:
 
         res = []
         for proto_name, proto_attrs in self.definition.items():
