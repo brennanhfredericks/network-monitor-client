@@ -4,7 +4,7 @@ import asyncio
 from collections import OrderedDict
 from asyncio import Task
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 
 
 class Service_Manager(object):
@@ -13,11 +13,12 @@ class Service_Manager(object):
         # hold a ordered mapping of Task
         self._services: OrderedDict[str, Task] = OrderedDict()
 
-    def add_service(self, service_name: str, service_obj: Any):
+    async def add_service(self, service_name: str, service_obj: Any):
         # add service to Order dict
-        self._services[service_name] = service_obj
+        task: Task = asyncio.create_task(service_obj)
+        self._services[service_name] = task
 
-    def stop_service(self, service_name):
+    async def stop_service(self, service_name):
         # implement later
         raise NotImplemented
 

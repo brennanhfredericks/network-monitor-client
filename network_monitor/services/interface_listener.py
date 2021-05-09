@@ -1,51 +1,64 @@
 import ctypes
-import socket
+
 import os
 import threading
 import time
-import queue
 import sys
 
+from socket import socket
+from asyncio import Queue
+from aiologger import Logger
+from typing import Optional, List, Dict, Any, Tuple
 # used to manipulate file descriptor for unix
+
+
 class ifreq(ctypes.Structure):
-    _fields_ = [("ifr_ifrn", ctypes.c_char * 16), ("ifr_flags", ctypes.c_short)]
+    _fields_: List[Tuple[str, Any]] = [("ifr_ifrn", ctypes.c_char * 16),
+                                       ("ifr_flags", ctypes.c_short)]
 
 
 class FLAGS(object):
     # linux/if_ether.h
-    ETH_P_ALL = 0x0003  # all protocols
-    ETH_P_IP = 0x0800  # IP only
+    ETH_P_ALL: int = 0x0003  # all protocols
+    ETH_P_IP: int = 0x0800  # IP only
     # linux/if.h
-    IFF_PROMISC = 0x100
+    IFF_PROMISC: int = 0x100
     # linux/sockios.h
-    SIOCGIFFLAGS = 0x8913  # get the active flags
-    SIOCSIFFLAGS = 0x8914  # set the active flags
+    SIOCGIFFLAGS: int = 0x8913  # get the active flags
+    SIOCSIFFLAGS: int = 0x8914  # set the active flags
 
 
 class InterfaceContextManager(object):
-    def __init__(self, ifname: str):
+    """
+        abstraction layer for different operating systems. only tested ubuntu linux
+    """
+
+    def __init__(self, interface_name: str) -> None:
 
         # linux os
         if os.name == "posix":
             import fcntl  # posix-only, use to manipulate file describtor
 
             # htons: converts 16-bit positive integers from host to network byte order
-            sock = socket.socket(
-                socket.AF_PACKET, socket.SOCK_RAW, socket.htons(FLAGS.ETH_P_ALL)
+            sock: socket = socket(
+                socket.AF_PACKET, socket.SOCK_RAW, socket.htons(
+                    FLAGS.ETH_P_ALL)
             )
 
-            ifr = ifreq()
+            ifr: ifreq = ifreq()
             # set interface name
-            ifr.ifr_ifrn = ifname.encode("utf-8")
+            ifr.ifr_ifrn = interface_name.encode("utf-8")
             # get active flags for interface
             fcntl.ioctl(sock.fileno(), FLAGS.SIOCGIFFLAGS, ifr)
+
+            # keep a copy of flags state before changing inorder to restore to original state when done
+            self._ifr: ifreq = ifr
+
             # add promiscuous flag
             ifr.ifr_flags |= FLAGS.IFF_PROMISC
             # updated flags
             fcntl.ioctl(sock.fileno(), FLAGS.SIOCSIFFLAGS, ifr)
 
-            # keep a copy of flags state inorder to restore when done
-            self._ifr = ifr
         # windows os
         elif os.name == "nt":
             # test to see if working
@@ -57,13 +70,12 @@ class InterfaceContextManager(object):
                 f"low level interface not implemented for {os.name} operating system"
             )
 
-        self._llsocket = sock
-        self.hostname = socket.gethostname()
+        self._llsocket: socket = sock
 
-    def __enter__(self):
+    def __enter__(self) -> socket:
         return self._llsocket
 
-    def __exit__(self, *exc):
+    def __exit__(self, *exc) -> None:
         # linux
         if os.name == "posix":
             import fcntl
@@ -80,44 +92,27 @@ class InterfaceContextManager(object):
 
 class Interface_Listener(object):
     # maximum ethernet frame size is 1522 bytes
-    BUFFER_SIZE = 65565
+    BUFFER_SIZE: int = 65565
 
-    def __init__(self, ifname: str, data_queue: queue.Queue):
+    def __init__(self, interface_name: str, raw_data_queue: Queue) -> None:
         # used to initialize required things
+        # specify the interface to lister on
+        self.interface_name: str = interface_name
 
-        self.ifname = ifname
-        self._data_queue = data_queue
+        # raw ethernet packects put on to queue for processing
+        self.raw_data_queue: Queue = raw_data_queue
 
-    def _listen(self):
-        try:
-            with InterfaceContextManager(self.ifname) as interface:
-                while self._sentinal:
-                    try:
-                        # packet = bytes, address
-                        packet = interface.recvfrom(self.BUFFER_SIZE)
+    async def worker(self) -> None:
+        logger = Logger.with_default_handlers(
+            name="interface-listener-service-logger")
+        with InterfaceContextManager(self.interface_name) as interface:
+            while True:
+                try:
+                    # packet = bytes, address
+                    packet: Tuple[bytes, Tuple[str, int, int, int,
+                                               bytes]] = interface.recvfrom(self.BUFFER_SIZE)
+                    await self.raw_data_queue.put(packet)
 
-                        self._data_queue.put(packet)
-
-                    except Exception as e:
-                        # add logging functionality here
-                        print("listener receiving data from socket {e}")
-                        tb = sys.exc_info()
-                        print(tb)
-
-                    time.sleep(0.1)
-
-            print("loop stopped")
-        except Exception as e:
-            self._data_queue.put(e)
-            self._data_queue.put(sys.exc_info())
-
-    def stop(self):
-        self._sentinal = False
-        self._thread_handle.join()
-
-    def start(self):
-        self._sentinal = True
-        self._thread_handle = threading.Thread(
-            target=self._listen, name="network listener", daemon=False
-        )
-        self._thread_handle.start()
+                except Exception as e:
+                    # add logging functionality here
+                    await logger.exception("listener receiving data from socket {e}")

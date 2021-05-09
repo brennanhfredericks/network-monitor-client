@@ -11,6 +11,8 @@ from .protocol_utils import get_mac_addr, EnhancedJSONEncoder, Unknown
 from .layer import Layer_Protocols
 from .parsers import Protocol_Parser
 
+from typing import Optional, Dict, Any, Union, Tuple
+
 PKTTYPE_LOOKUP = {
     socket.PACKET_BROADCAST: "PACKET_BROADCAST",
     socket.PACKET_FASTROUTE: "PACKET_FASTROUTE",
@@ -25,63 +27,54 @@ PKTTYPE_LOOKUP = {
 class AF_Packet(object):
     """ Class for parsing low level packets"""
 
-    ifname: str
-    proto: int
-    pkttype: str
-    hatype: int
-    hwaddr: str
+    Interface_Name: str
+    Ethernet_Protocol_Number: int
+    Packet_Type: str
+    ARP_Hardware_Address_Type: int
+    Hardware_Physical_Address: str
 
-    def __init__(self, address):
+    def __init__(self, address: Tuple[str, int, int, int, bytes]) -> None:
 
-        self.ifname = address[0]
-        self.proto = address[1]
-        self.pkttype = PKTTYPE_LOOKUP[address[2]]
-        self.hatype = address[3]
-        self.hwaddr = get_mac_addr(address[4])
+        self.Interface_Name: str = address[0]
+        self.Ethernet_Protocol_Number: int = address[1]
+        self.Packet_Type: str = PKTTYPE_LOOKUP[address[2]]
+        self.ARP_Hardware_Address_Type: int = address[3]
+        self.Hardware_Physical_Address: str = get_mac_addr(address[4])
 
-    def serialize_to_bytes(self):
-        # ret = {
-        #     "ifname": self.ifname,
-        #     "proto": self.proto,
-        #     "pkttype": self.pkttype,
-        #     "hatype": self.hatype,
-        #     "hwadddr": self.hwaddr,
-        # }
-        # ret = base64.b64encode(json.dumps(ret).encode("utf-8"))
-
-        return None
-
-    def serialize(self):
+    def serialize(self) -> Dict[str, Union[str, int]]:
 
         return dataclasses.asdict(self)
+
+
+Protocol_Parser._register_protocol_class_name("AF_Packet", AF_Packet)
 
 
 @dataclass
 class Packet_802_2(object):
 
-    description = "Ethernet 802.2 LLC Packet"
-    identifier = -2
+    Description = "Ethernet 802.2 LLC Packet"
+    Identifier = -2
     DSAP: str
     SSAP: str
-    control: str
+    Control: str
 
-    def __init__(self, raw_bytes):
+    def __init__(self, raw_bytes: bytes) -> None:
         # https://en.wikipedia.org/wiki/IEEE_802.2
 
         # 802.2 LLC PDU
         __dsap, __ssap, __ctl = struct.unpack("! B B B", raw_bytes[:3])
-        self.DSAP = __dsap
-        self.SSAP = __ssap
+        self.DSAP: str = __dsap
+        self.SSAP: str = __ssap
 
         # check if control field is 8 bit or 16 bit
         if __ctl & 3 == 3:
-            self.control = __ctl
+            self.Control: str = __ctl
             self.__parse_upper_layer_protocol(raw_bytes[3:])
         else:
             _, _, __ctl = struct.unpack("! B B H", raw_bytes[:4])
-            self.control = __ctl
+            self.Control: str = __ctl
             self.__parse_upper_layer_protocol(raw_bytes[4:])
-        self._LSAP_info = {}
+        self._LSAP_info: Dict[str, str] = {}
 
         # DSAP
         if self.DSAP & 1 == 0:
@@ -102,60 +95,60 @@ class Packet_802_2(object):
             self._LSAP_info["SSAP"] = "response"
 
         # store raw
-        self._raw_bytes = raw_bytes
+        self._raw_bytes: bytes = raw_bytes
 
-    def raw(self):
+    def raw(self) -> bytes:
         return self._raw_bytes
 
-    def upper_layer(self):
+    def upper_layer(self) -> Any:
 
         return self.__encap
 
-    def serialize(self):
+    def serialize(self) -> Dict[str, Union[str, int]]:
         return dataclasses.asdict(self)
 
-    def __parse_upper_layer_protocol(self, remaining_raw_bytes):
+    def __parse_upper_layer_protocol(self, remaining_raw_bytes) -> None:
 
-        self.__encap = Protocol_Parser.parse(
+        self.__encap: Any = Protocol_Parser.parse(
             Layer_Protocols.LSAP_addresses, self.DSAP, remaining_raw_bytes
         )
 
 
 @dataclass
 class Packet_802_3(object):
-    description = "Ethernet 802.3 Packet"
-    identifier = -3
-    destination_MAC: str
-    source_MAC: str
-    ethertype: int
+    Description = "Ethernet 802.3 Packet"
+    Identifier = -3
+    Destination_MAC: str
+    Source_MAC: str
+    Ethertype: int
 
-    def __init__(self, raw_bytes):
-        __des_addr, __src_addr, __tp = struct.unpack("! 6s 6s H", raw_bytes[:14])
-        self.destination_MAC = get_mac_addr(__des_addr)
-        self.source_MAC = get_mac_addr(__src_addr)
-        self.ethertype = __tp
+    def __init__(self, raw_bytes: bytes) -> None:
+        __des_addr, __src_addr, __tp = struct.unpack(
+            "! 6s 6s H", raw_bytes[:14])
+        self.Destination_MAC: str = get_mac_addr(__des_addr)
+        self.Source_MAC: str = get_mac_addr(__src_addr)
+        self.Ethertype: int = __tp
 
-        self._raw_bytes = raw_bytes
+        self._raw_bytes: bytes = raw_bytes
 
         self.__parse_upper_layer_protocol(raw_bytes[14:])
 
-    def raw(self):
+    def raw(self) -> bytes:
         return self._raw_bytes
 
-    def upper_layer(self):
+    def upper_layer(self) -> Any:
         return self.__encap
 
-    def serialize(self):
+    def serialize(self) -> Dict[str, Union[str, int]]:
         return dataclasses.asdict(self)
 
-    def __parse_upper_layer_protocol(self, remaining_raw_bytes):
-        self.__encap = Protocol_Parser.parse(
-            Layer_Protocols.Ethertype, self.ethertype, remaining_raw_bytes
+    def __parse_upper_layer_protocol(self, remaining_raw_bytes: bytes) -> Any:
+        self.__encap: Any = Protocol_Parser.parse(
+            Layer_Protocols.Ethertype, self.Ethertype, remaining_raw_bytes
         )
 
 
-# manual hack to add link layer protocol to protocol lookup table
-Protocol_Parser._register_protocol_class_name("AF_Packet", AF_Packet)
 Protocol_Parser._register_protocol_class_name("Packet_802_3", Packet_802_3)
-Protocol_Parser._register_protocol_class_name("Packet_802_2", Packet_802_2)
+
+# add here to avoid cicular reference link layer protocol to protocol lookup table
 Protocol_Parser._register_protocol_class_name("Unknown", Unknown)

@@ -43,7 +43,6 @@ class Parser:
         self.__protocol_str_lookup[class_name] = protocol_parser
 
     def get_protocol_class_by_name(self, class_name: str):
-
         """ return an empty protocol class used in comparison """
         try:
             res = self.__protocol_str_lookup[class_name]

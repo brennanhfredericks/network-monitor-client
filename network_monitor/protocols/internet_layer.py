@@ -22,22 +22,22 @@ from .layer import Layer_Protocols
 @dataclass
 class IPv4(object):
 
-    description = "Internet Protocol Version 4"
-    identifier = 2048
-    version: int
+    Description = "Internet Protocol Version 4"
+    Identifier = 2048
+    Version: int
     IHL: int
     DSCP: int
     ECN: int
-    total_length: int
-    identification: int
-    flags: int
-    fragment_offset: int
+    Total_Length: int
+    Identification: int
+    Flags: int
+    Fragment_Offset: int
     TTL: int
-    protocol: int
-    header_checksum: int
-    source_address: str
-    destination_address: str
-    options: dict
+    Protocol: int
+    Header_Checksum: int
+    Source_Address: str
+    Destination_Address: str
+    Options: dict
 
     def __init__(self, raw_bytes):
 
@@ -198,7 +198,8 @@ class IPv6_Ext_Headers(object):
             # extract extion until upper layer protocol is reached
             while ext_header in self.EXT_HEADER_LOOKUP:
                 # should parse header to append id and data
-                new_ext_header, ext_header_data, r_raw_bytes = parse_header(r_raw_bytes)
+                new_ext_header, ext_header_data, r_raw_bytes = parse_header(
+                    r_raw_bytes)
 
                 # need to implement Extion headers parsers to decode headers
                 self._headers.append(

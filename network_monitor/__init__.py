@@ -43,7 +43,12 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
     processed: asyncio.Queue = asyncio.Queue()
 
-    # configure listerner service
+    # holds all coroutine services
+    services_manager: Service_Manager = Service_Manager()
+
+    # configure and listerner service
+    listener_service: Interface_Listener(app_config.InterfaceName)
+    services_manager.add_service("interface_listener", listener_service.worker)
 
 
 async def startup_manager(args) -> None:
