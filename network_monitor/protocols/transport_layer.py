@@ -79,7 +79,7 @@ class TCP(object):
         __kind, __length = struct.unpack("! B B", raw_options_bytes[:2])
         __data = raw_options_bytes[2:__length]
 
-        self.Options: Dict[str, Union[str, int, Dict[str, Union[str, int]]:]]: = {
+        self.Options: Dict[str, Union[str, int, Dict[str, Union[str, int]]]] = {
             "Option-Kind": __kind,
             "Option-Length": __length,
             "Option-Data": base64.b64encode(__data).decode("utf-8"),
@@ -91,7 +91,7 @@ class TCP(object):
     def upper_layer(self) -> Optional[Any]:
         return None
 
-    def serialize(self) -> Dict[str, Union[str, int]]::
+    def serialize(self) -> Dict[str, Union[str, int]]:
         return dataclasses.asdict(self)
 
 
@@ -132,7 +132,7 @@ class UDP(object):
 
         return None
 
-    def serialize(self) -> Dict[str, Union[str, int]]::
+    def serialize(self) -> Dict[str, Union[str, int]]:
         return dataclasses.asdict(self)
 
 
