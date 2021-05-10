@@ -4,9 +4,9 @@ import os
 import threading
 import time
 import sys
-
-from socket import socket
-from asyncio import Queue
+import asyncio
+from socket import socket, AF_PACKET, SOCK_RAW, htons
+from asyncio import Queue, CancelledError
 from aiologger import Logger
 from typing import Optional, List, Dict, Any, Tuple
 # used to manipulate file descriptor for unix
@@ -41,10 +41,10 @@ class InterfaceContextManager(object):
 
             # htons: converts 16-bit positive integers from host to network byte order
             sock: socket = socket(
-                socket.AF_PACKET, socket.SOCK_RAW, socket.htons(
+                AF_PACKET, SOCK_RAW, htons(
                     FLAGS.ETH_P_ALL)
             )
-
+            # sock.setblocking(False)
             ifr: ifreq = ifreq()
             # set interface name
             ifr.ifr_ifrn = interface_name.encode("utf-8")
@@ -102,17 +102,31 @@ class Interface_Listener(object):
         # raw ethernet packects put on to queue for processing
         self.raw_data_queue: Queue = raw_data_queue
 
+    async def read(self, interface: socket) -> Tuple[bytes, Tuple[str, int, int, int, bytes]]:
+
+        return interface.recvfrom(self.BUFFER_SIZE)
+
+    # if operation is not suspended or waiting it will pegg processor
     async def worker(self) -> None:
+
         logger = Logger.with_default_handlers(
             name="interface-listener-service-logger")
         with InterfaceContextManager(self.interface_name) as interface:
             while True:
+                s = time.monotonic()
                 try:
-                    # packet = bytes, address
-                    packet: Tuple[bytes, Tuple[str, int, int, int,
-                                               bytes]] = interface.recvfrom(self.BUFFER_SIZE)
+                    packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
+                    #packet = (5545, 4545454)
+                    await asyncio.sleep(0.1)
                     await self.raw_data_queue.put(packet)
+                except CancelledError as e:
+                    # clean up and re raise to end
+                    print("listener service cancelled")
+                    raise e
 
                 except Exception as e:
                     # add logging functionality here
+                    print("ohter exception: ", e)
                     await logger.exception("listener receiving data from socket {e}")
+                print("time diff: ", time.monotonic()-s)
+            print("done")

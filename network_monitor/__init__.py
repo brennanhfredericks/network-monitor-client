@@ -7,6 +7,8 @@ import time
 import os
 import re
 import asyncio
+
+from asyncio import CancelledError
 from typing import Optional
 
 from .services import (
@@ -47,8 +49,27 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     services_manager: Service_Manager = Service_Manager()
 
     # configure and listerner service
-    listener_service: Interface_Listener(app_config.InterfaceName)
-    services_manager.add_service("interface_listener", listener_service.worker)
+    listener_service: Interface_Listener = Interface_Listener(
+        app_config.InterfaceName, raw_queue)
+
+    listener_service_task = asyncio.create_task(
+        listener_service.worker(), name="listener-service-task")
+
+    services_manager.add_service(
+        "interface_listener", listener_service_task)
+
+    # await asyncio.gather(listener_service_task, return_exceptions=True)
+    # need to await operation here
+
+    print(listener_service.raw_data_queue.qsize())
+    # test only
+    await asyncio.sleep(5)
+    print(listener_service.raw_data_queue.qsize())
+    c = listener_service_task.cancel()
+    print("done sleeping. cancel: ", c)
+    await asyncio.gather(listener_service_task, return_exceptions=True)
+
+    # print("stopped all")
 
 
 async def startup_manager(args) -> None:
@@ -132,4 +153,4 @@ def args_parser() -> None:
 
     # parse arguments
     args = basic_parser.parse_args()
-    asyncio.run(startup_manager(args))
+    asyncio.run(startup_manager(args), debug=False)
