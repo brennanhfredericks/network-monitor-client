@@ -61,6 +61,7 @@ class InterfaceContextManager(object):
 
         # windows os
         elif os.name == "nt":
+            raise NotImplemented
             # test to see if working
             self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
             # raise ValueError(f"low level interface for Windows operating system not implemented yet")
@@ -119,7 +120,7 @@ class Interface_Listener(object):
                     packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
                     #packet = (5545, 4545454)
 
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.01)
                     await self.raw_data_queue.put(packet)
                 except CancelledError as e:
                     # clean up and re raise to end

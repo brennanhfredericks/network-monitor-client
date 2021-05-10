@@ -24,7 +24,7 @@ class TCP(object):
     Acknowledgment_Number: int  # if ACK set
     Data_Offset: int
     Reserved: int
-    Flags: list
+    Flags: int
     Window_Size: int
     Checksum: int
     Urgent_Pointer: int  # if URG set
@@ -59,7 +59,7 @@ class TCP(object):
         self.Urgent_Pointer: int = __urg_ptr
 
         self._raw_bytes: bytes = raw_bytes
-
+        self._payload: Optional[bytes] = None
         # if data_offset is larger than 5 then option present
         if self.Data_Offset > 5:
             # options field has been set need to extract to get to payload
@@ -68,11 +68,11 @@ class TCP(object):
             raw_options = raw_bytes[20:offset]
             self.__parse_options(raw_options)
 
-            self._payload: bytes = raw_bytes[offset:]
+            self._payload = raw_bytes[offset:]
         else:
             # payload data probabily encrypted
             self.Options: Dict[str, Union[str, int]] = {}
-            self._payload: bytes = raw_bytes[20:]
+            self._payload = raw_bytes[20:]
 
     def __parse_options(self, raw_options_bytes) -> None:
         # Option-Kind (1 byte), Option-Length (1 byte), Option-Data (variable).

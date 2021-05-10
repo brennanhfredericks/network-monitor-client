@@ -13,7 +13,6 @@ from .protocol_utils import (
     get_ipv6_addr,
     get_mac_addr,
     grouper,
-    ones_comp_add16,
     EnhancedJSONEncoder,
 )
 
@@ -122,10 +121,10 @@ class IPv4(object):
     def serialize(self) -> Dict[str, Union[str, int]]:
         return dataclasses.asdict(self)
 
-    def __parse_upper_layer_protocol(self, remaining_raw_bytes: bytes):
+    def __parse_upper_layer_protocol(self, remaining_raw_bytes: bytes) -> None:
 
         self.__encap: Any = Protocol_Parser.parse(
-            Layer_Protocols.IP_protocols, self.protocol, remaining_raw_bytes
+            Layer_Protocols.IP_protocols, self.Protocol, remaining_raw_bytes
         )
 
 
@@ -151,7 +150,7 @@ class IPv6_Ext_Headers(object):
     ]
 
     def __init__(self) -> None:
-        self._headers: List[Any, ...] = []
+        self._headers: List[Any] = []
 
     def parse_extension_headers(self, next_header: int, raw_bytes: bytes) -> Tuple[Any, int, bytes]:
         def parse_header(remaining_raw_bytes: bytes) -> Tuple[int, bytes, bytes]:
@@ -356,14 +355,14 @@ class LLDP(object):
 
         tlv_dict, r_bytes = self.__parse_tlv(raw_bytes)
         self.TLV: List[Dict[str, Union[str, int]]] = [tlv_dict]
-        while tlv_dict["Type"] != 0:
+        while int(tlv_dict["Type"]) != 0:
             tlv_dict, r_bytes = self.__parse_tlv(r_bytes)
 
             self.TLV.append(tlv_dict)
 
         self._raw_bytes: bytes = raw_bytes
 
-    def __parse_tlv(self, raw_bytes: bytes) -> Dict[str, Union[str, int]]:
+    def __parse_tlv(self, raw_bytes: bytes) -> Tuple[Dict[str, Union[str, int]], bytes]:
         (__tl,) = struct.unpack("! H", raw_bytes[:2])
         type_ = (__tl & 0b1111111000000000) >> 9
         length = __tl & 0b111111111

@@ -52,7 +52,7 @@ class Filter(object):
             # check if str and try to decode to json
             if isinstance(definition, str):
                 try:
-                    definition: Dict[str, Dict[str, Union[str, int]]] = json.loads(
+                    definition = json.loads(
                         definition)
                 except Exception as e:
                     raise ValueError(
@@ -69,7 +69,7 @@ class Filter(object):
 
             if not isinstance(proto_attrs, dict):
                 raise ValueError(
-                    f"{self.name}: {proto_class_name} value ({proto_attrs}) not of type {type(dict())}"
+                    f"{self.Name}: {proto_class_name} value ({proto_attrs}) not of type {type(dict())}"
                 )
 
             # check for valid dict  keys (attr name) and value (attr value type)
@@ -186,11 +186,11 @@ class Packet_Parser(object):
                 if af_packet.Ethernet_Protocol_Number >= 0 and af_packet.Ethernet_Protocol_Number <= 1500:
 
                     # logical link control (LLC) Numbers
-                    out_packet: Packet_802_2 = Packet_802_2(raw_bytes)
+                    out_packet = Packet_802_2(raw_bytes)
                 else:
                     # check whether WIFI packets are different from ethernet packets
 
-                    out_packet: Packet_802_3 = Packet_802_3(raw_bytes)
+                    out_packet = Packet_802_3(raw_bytes)
 
                 # notify queued item processed
                 self.raw_data_queue.task_done()
