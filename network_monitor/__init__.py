@@ -8,7 +8,7 @@ import os
 import re
 import asyncio
 
-from asyncio import CancelledError
+from asyncio import CancelledError, Task
 from typing import Optional
 
 from .services import (
@@ -43,7 +43,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     # interface listener service add raw binary data to queue
     raw_queue: asyncio.Queue = asyncio.Queue()
     # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
-    processed: asyncio.Queue = asyncio.Queue()
+    processed_queue: asyncio.Queue = asyncio.Queue()
 
     # holds all coroutine services
     services_manager: Service_Manager = Service_Manager()
@@ -52,18 +52,36 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     listener_service: Interface_Listener = Interface_Listener(
         app_config.InterfaceName, raw_queue)
 
-    listener_service_task = asyncio.create_task(
+    listener_service_task: Task = asyncio.create_task(
         listener_service.worker(), name="listener-service-task")
 
     services_manager.add_service(
         "interface_listener", listener_service_task)
 
+    # setup packet parser
+    packet_filter: Packet_Filter = Packet_Filter(
+        app_config.FilterSubmissionTraffic)
+
+    packet_filter.register(app_config.Filters)
+    packer_parser: Packet_Parser = Packet_Parser(
+        raw_queue, processed_queue, packet_filter)
+
+    packet_parser_service_task: Task = asyncio.create_task(
+        packer_parser.worker(), name="packet-parser-service-task")
+
+    services_manager.add_service(
+        "packet_parser", packet_parser_service_task)
     # test only
     await asyncio.sleep(5)
 
-    c = listener_service_task.cancel()
-    print("done sleeping. cancel: ", c)
-    await asyncio.gather(listener_service_task, return_exceptions=True)
+    listener_service_task.cancel()
+
+    # wait for raw queue to finish processing
+    # await raw_queue.join()
+
+    packet_parser_service_task.cancel()
+
+    await asyncio.gather(listener_service_task, packet_parser_service_task, return_exceptions=True)
 
     # print("stopped all")
 

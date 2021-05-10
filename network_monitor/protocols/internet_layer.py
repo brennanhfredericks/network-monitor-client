@@ -230,7 +230,7 @@ class IPv6(object):
             self.Ext_Headers,
             protocol,
             remaining_raw_bytes,
-        ) = IPv6_Ext_Headers().parse_extension_headers(self.next_header, raw_bytes[40:])
+        ) = IPv6_Ext_Headers().parse_extension_headers(self.Next_Header, raw_bytes[40:])
 
         self._raw_bytes: bytes = raw_bytes
 

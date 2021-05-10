@@ -61,10 +61,10 @@ class TCP(object):
         self._raw_bytes: bytes = raw_bytes
 
         # if data_offset is larger than 5 then option present
-        if self.data_offset > 5:
+        if self.Data_Offset > 5:
             # options field has been set need to extract to get to payload
             # implement extractor
-            offset = 5 * self.data_offset
+            offset = 5 * self.Data_Offset
             raw_options = raw_bytes[20:offset]
             self.__parse_options(raw_options)
 

@@ -3,7 +3,7 @@ import threading
 import time
 import json
 
-from asyncio import Queue
+from asyncio import Queue, CancelledError
 
 from typing import Dict, Any, Union, List, Optional
 from dataclasses import dataclass
@@ -90,7 +90,7 @@ class Filter(object):
     def apply(self, packet: Dict[str, Dict[str, Union[str, int]]]) -> bool:
 
         res: List[bool] = []
-        for proto_name, proto_attrs in self.definition.items():
+        for proto_name, proto_attrs in self.Definition.items():
             if proto_name in packet.keys():
 
                 if not proto_attrs:
@@ -172,26 +172,41 @@ class Packet_Parser(object):
 
         while True:
 
-            raw_bytes, address = await self._data_queue.get()
+            try:
+                s = time.monotonic()
 
-            # do processing with data
-            af_packet: AF_Packet = AF_Packet(address)
+                raw_bytes, address = await self.raw_data_queue.get()
 
-            out_packet: Optional[Union[Packet_802_3, Packet_802_2]] = None
+                # do processing with data
+                af_packet: AF_Packet = AF_Packet(address)
 
-            # check for protocol encapsulation based on the ethernet protocol number
-            if af_packet.proto >= 0 and af_packet.proto <= 1500:
-                # logical link control (LLC) Numbers
-                out_packet: Packet_802_2 = Packet_802_2(raw_bytes)
-            else:
-                # check whether WIFI packets are different from ethernet packets
-                out_packet: Packet_802_3 = Packet_802_3(raw_bytes)
+                out_packet: Optional[Union[Packet_802_3, Packet_802_2]] = None
 
-            # implement packet filter here before adding data to ouput queue
-            packet: Optional[Dict[str, Dict[str, Union[str, int]]]] = self.packet_filter.apply(
-                af_packet, out_packet)
+                # check for protocol encapsulation based on the ethernet protocol number
+                if af_packet.Ethernet_Protocol_Number >= 0 and af_packet.Ethernet_Protocol_Number <= 1500:
 
-            if packet is not None:
-                self.processed_data_queue.put(packet)
+                    # logical link control (LLC) Numbers
+                    out_packet: Packet_802_2 = Packet_802_2(raw_bytes)
+                else:
+                    # check whether WIFI packets are different from ethernet packets
 
-            # implement stream holder here
+                    out_packet: Packet_802_3 = Packet_802_3(raw_bytes)
+
+                # notify queued item processed
+                self.raw_data_queue.task_done()
+
+                # implement packet filter here before adding data to ouput queue
+                packet: Optional[Dict[str, Dict[str, Union[str, int]]]] = self.packet_filter.apply(
+                    af_packet, out_packet)
+
+                if packet is not None:
+                    await self.processed_data_queue.put(packet)
+
+                # implement stream holder here
+                print("packet parser time diff: ", time.monotonic()-s)
+            except CancelledError as e:
+                print("packet parser service cancelled", e)
+                # check that raw queue empty
+                raise e
+            except Exception as e:
+                print(e)

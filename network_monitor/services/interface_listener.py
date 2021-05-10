@@ -123,12 +123,12 @@ class Interface_Listener(object):
                     await self.raw_data_queue.put(packet)
                 except CancelledError as e:
                     # clean up and re raise to end
-                    print("listener service cancelled")
+                    print("listener service cancelled", e)
                     raise e
 
                 except Exception as e:
                     # add logging functionality here
-                    print("ohter exception: ", e)
+                    print("other exception: ", e)
                     await logger.exception("listener receiving data from socket {e}")
-                print("time diff: ", time.monotonic()-s)
+                print("interface listener time diff: ", time.monotonic()-s)
             print("done")

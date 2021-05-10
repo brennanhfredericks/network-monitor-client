@@ -55,7 +55,7 @@ class DevConfig(BaseConfig):
 
     def __init__(self) -> None:
 
-        super(BaseConfig, self).__init__()
+        super(DevConfig, self).__init__()
 
         self.RemoteMetadataStorage: str = "http://localhost:5050/packets"
         self.ResubmissionInterval: int = 15
