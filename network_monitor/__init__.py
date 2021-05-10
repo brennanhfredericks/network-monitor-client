@@ -58,13 +58,9 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     services_manager.add_service(
         "interface_listener", listener_service_task)
 
-    # await asyncio.gather(listener_service_task, return_exceptions=True)
-    # need to await operation here
-
-    print(listener_service.raw_data_queue.qsize())
     # test only
     await asyncio.sleep(5)
-    print(listener_service.raw_data_queue.qsize())
+
     c = listener_service_task.cancel()
     print("done sleeping. cancel: ", c)
     await asyncio.gather(listener_service_task, return_exceptions=True)

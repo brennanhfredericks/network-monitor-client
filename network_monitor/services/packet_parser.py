@@ -1,8 +1,11 @@
-import queue
+
 import threading
 import time
 import json
-from typing import Dict, Any
+
+from asyncio import Queue
+
+from typing import Dict, Any, Union, List, Optional
 from dataclasses import dataclass
 
 from ..protocols import AF_Packet, Packet_802_3, Packet_802_2, Protocol_Parser
@@ -10,13 +13,13 @@ from ..protocols import AF_Packet, Packet_802_3, Packet_802_2, Protocol_Parser
 from ..filters.deep_walker import flatten_protocols
 
 """
-    Packet Filter 
+    Packet Filter
 
     Implemeting packet filter
 
     - get all information from attrs and value from class lookup and match to input
 
-    - get all information from key and value using flatten_protocols into list and match input 
+    - get all information from key and value using flatten_protocols into list and match input
         - seriliaze protocols into dict, i.e. move step from submiter to filter,
         - filter input is provide as a dict
         - i.e {IPv4:{destination:192.168.124.26}}
@@ -33,22 +36,24 @@ class Filter(object):
         definition: dictionary containting the keys and values ti match with
 
     """
-    name: str
-    definition: dict
+    Name: str
+    Definition: dict
 
-    def __init__(self, name: str, definition: Dict[str, Any]):
-        self.name = name
+    def __init__(self, name: str, definition: Union[str, Dict[str, Dict[str, Union[str, int]]]]) -> None:
+        self.Name: str = name
         # check if definiion is valid
-        self.definition = self._check_valid_definition(definition)
+        self.Definition:  Dict[str, Dict[str, Union[str, int]]
+                               ] = self._check_valid_definition(definition)
 
-    def _check_valid_definition(self, definition):
+    def _check_valid_definition(self, definition: Union[str, Dict[str, Dict[str, Union[str, int]]]]) -> Dict[str, Dict[str, Union[str, int]]]:
 
         if not isinstance(definition, dict):
 
             # check if str and try to decode to json
             if isinstance(definition, str):
                 try:
-                    definition = json.loads(definition)
+                    definition: Dict[str, Dict[str, Union[str, int]]] = json.loads(
+                        definition)
                 except Exception as e:
                     raise ValueError(
                         f"{definition} is not a valid definition: {e}")
@@ -59,7 +64,8 @@ class Filter(object):
         # reoccuring part
         for proto_class_name, proto_attrs in definition.items():
 
-            _cls = Protocol_Parser.get_protocol_class_by_name(proto_class_name)
+            _cls: Any = Protocol_Parser.get_protocol_class_by_name(
+                proto_class_name)
 
             if not isinstance(proto_attrs, dict):
                 raise ValueError(
@@ -68,7 +74,8 @@ class Filter(object):
 
             # check for valid dict  keys (attr name) and value (attr value type)
             for proto_attrs_name, proto_attrs_value in proto_attrs.items():
-                __temp = _cls.__dict__["__annotations__"]
+                __temp: Dict[str, Union[str, int]
+                             ] = _cls.__dict__["__annotations__"]
                 if not proto_attrs_name in __temp.keys():
                     raise ValueError(
                         f"{proto_attrs_name} not a attribute of {proto_class_name}"
@@ -80,9 +87,9 @@ class Filter(object):
 
         return definition
 
-    def apply(self, packet: dict) -> bool:
+    def apply(self, packet: Dict[str, Dict[str, Union[str, int]]]) -> bool:
 
-        res = []
+        res: List[bool] = []
         for proto_name, proto_attrs in self.definition.items():
             if proto_name in packet.keys():
 
@@ -107,12 +114,12 @@ class Filter(object):
 
 
 class Packet_Filter(object):
-    def __init__(self, filter_application_packets=False):
+    def __init__(self, filter_application_packets=False) -> None:
 
-        self.__filters = []
+        self.__filters: List[Filter] = []
 
     # register filters which is in the form of a dictionary
-    def register(self, filter_: Filter):
+    def register(self, filter_: Filter) -> None:
         """
         add packet filter
         """
@@ -123,25 +130,21 @@ class Packet_Filter(object):
             # single Filter object
             self.__filters.append(filter_)
 
-    def apply(self, af_packet, out_packet) -> bool:
+    def apply(self, af_packet: AF_Packet, out_packet: Union[Packet_802_3, Packet_802_2]) -> Optional[Dict[str, Dict[str, Union[str, int]]]]:
 
         # flatten protocols into list for easy seriliazation
 
-        out_protocols = flatten_protocols(out_packet)
+        out_protocols: List[Any] = flatten_protocols(out_packet)
 
         # create list of dictionaries containing definitions
-        _p = {
+        _p: Dict[str, Dict[str, Union[str, int]]] = {
             Protocol_Parser.get_protocol_name_by_class(p.__class__): p.serialize()
             for p in out_protocols
         }
+        # add originating information
+        _p["AF_Packet"] = af_packet.serialize()
 
-        # hack for older test to pass. in order test the af_packet is load from log as json
-        if not isinstance(af_packet, dict):
-            _p["AF_Packet"] = af_packet.serialize()
-        else:
-            _p["AF_Packet"] = af_packet
-
-        res = []
+        res: List[bool] = []
         for filter_ in self.__filters:
             res.append(filter_.apply(_p))
 
@@ -156,52 +159,39 @@ class Packet_Parser(object):
 
     def __init__(
         self,
-        data_queue: queue.Queue,
-        output_queue: queue.Queue,
+        raw_data_queue: Queue,
+        processed_queue: Queue,
         packet_filter: Packet_Filter,
-    ):
+    ) -> None:
 
-        self._data_queue = data_queue
-        self._output_queue = output_queue
-        self._packet_filter = packet_filter
+        self.raw_data_queue = raw_data_queue
+        self.processed_data_queue = processed_queue
+        self.packet_filter = packet_filter
 
-    def _parser(self):
+    async def worker(self) -> None:
 
-        # clearout data_queue before exiting loop
-        while self._sentinal or not self._data_queue.empty():
+        while True:
 
-            if not self._data_queue.empty():
-                raw_bytes, address = self._data_queue.get()
+            raw_bytes, address = await self._data_queue.get()
 
-                # do processing with data
-                af_packet = AF_Packet(address)
+            # do processing with data
+            af_packet: AF_Packet = AF_Packet(address)
 
-                out_packet = None
+            out_packet: Optional[Union[Packet_802_3, Packet_802_2]] = None
 
-                if af_packet.proto >= 0 and af_packet.proto <= 1500:
-                    # logical link control (LLC) Numbers
-                    out_packet = Packet_802_2(raw_bytes)
-                else:
-                    # check whether WIFI packets are different from ethernet packets
-                    out_packet = Packet_802_3(raw_bytes)
-
-                # implement packet filter here before adding data to ouput queue
-                packet = self._packet_filter.apply(af_packet, out_packet)
-
-                if packet is not None:
-                    self._output_queue.put(packet)
-
+            # check for protocol encapsulation based on the ethernet protocol number
+            if af_packet.proto >= 0 and af_packet.proto <= 1500:
+                # logical link control (LLC) Numbers
+                out_packet: Packet_802_2 = Packet_802_2(raw_bytes)
             else:
-                # sleep for 100ms
-                time.sleep(0.1)
+                # check whether WIFI packets are different from ethernet packets
+                out_packet: Packet_802_3 = Packet_802_3(raw_bytes)
 
-    def start(self):
-        self._sentinal = True
-        self._thread_handle = threading.Thread(
-            target=self._parser, name="packet parser", daemon=False
-        )
-        self._thread_handle.start()
+            # implement packet filter here before adding data to ouput queue
+            packet: Optional[Dict[str, Dict[str, Union[str, int]]]] = self.packet_filter.apply(
+                af_packet, out_packet)
 
-    def stop(self):
-        self._sentinal = False
-        self._thread_handle.join()
+            if packet is not None:
+                self.processed_data_queue.put(packet)
+
+            # implement stream holder here

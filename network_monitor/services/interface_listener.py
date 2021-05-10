@@ -111,12 +111,14 @@ class Interface_Listener(object):
 
         logger = Logger.with_default_handlers(
             name="interface-listener-service-logger")
+
         with InterfaceContextManager(self.interface_name) as interface:
             while True:
                 s = time.monotonic()
                 try:
                     packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
                     #packet = (5545, 4545454)
+
                     await asyncio.sleep(0.1)
                     await self.raw_data_queue.put(packet)
                 except CancelledError as e:
