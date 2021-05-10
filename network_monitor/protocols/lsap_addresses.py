@@ -3,7 +3,7 @@ import base64
 import sys
 import dataclasses
 from dataclasses import dataclass
-
+from typing import Optional, Any, Dict, Union
 from .parsers import Protocol_Parser
 from .layer import Layer_Protocols
 
@@ -11,57 +11,57 @@ from .layer import Layer_Protocols
 
 
 @dataclass
-class LSAP_one(object):
-    description = "my_identifeier_not_sure"
-    identifier = 1
-    message: str
+class LSAP_One(object):
+    Description = "my_identifeier_not_sure"
+    Identifier = 1
+    Message: str
 
-    def __init__(self, raw_bytes):
+    def __init__(self, raw_bytes: bytes) -> None:
         (__msg,) = struct.unpack(f"! {len(raw_bytes)}s", raw_bytes)
 
-        self.message = base64.b64encode(__msg).decode("utf-8")
-        self._raw_bytes = raw_bytes
+        self.Message: str = base64.b64encode(__msg).decode("utf-8")
+        self._raw_bytes: bytes = raw_bytes
 
-    def raw(self):
+    def raw(self) -> bytes:
         return self._raw_bytes
 
-    def upper_layer(self):
+    def upper_layer(self) -> Optional[Any]:
         return None
 
-    def serialize(self):
+    def serialize(self) -> Dict[str, Union[str, int]]:
         return dataclasses.asdict(self)
 
 
-Protocol_Parser.register(Layer_Protocols.LSAP_addresses, 1, LSAP_one)
+Protocol_Parser.register(Layer_Protocols.LSAP_addresses, 1, LSAP_One)
 
 
 @dataclass
-class SNAP_ext(object):
-    description = "SNAP extension"
-    identifier = 170
+class SNAP_Ext(object):
+    Description = "SNAP extension"
+    Identifier = 170
     OUI: str
-    protocol_id: int
+    Protocol_ID: int
 
-    def __init__(self, raw_bytes):
+    def __init__(self, raw_bytes: bytes) -> None:
         __oui, __proto = struct.unpack("! 3s H", raw_bytes[:5])
         self.OUI = int.from_bytes(_oui, sys.byteorder)
-        self.protocol_id = __proto
+        self.Protocol_ID = __proto
 
-        self.__raw_bytes = raw_bytes
+        self.__raw_bytes: bytes = raw_bytes
 
         self.__parse_upper_layer(raw_bytes[5:])
 
-    def raw(self):
+    def raw(self) -> bytes:
         return self.__raw_bytes
 
-    def upper_layer(self):
+    def upper_layer(self) -> Optional[Any]:
 
         return self.__encap
 
-    def serialize(self):
+    def serialize(self) -> Dict[str, Union[str, int]]:
         return dataclasses.asdict(self)
 
-    def __parse_upper_layer(self, remaining_raw_bytes):
+    def __parse_upper_layer(self, remaining_raw_bytes: bytes):
 
         if self.OUI == 0:
             self.__encap = Protocol_Parser.parse(
@@ -75,4 +75,4 @@ class SNAP_ext(object):
             self.__encap = remaining_raw_bytes
 
 
-Protocol_Parser.register(Layer_Protocols.LSAP_addresses, 170, SNAP_ext)
+Protocol_Parser.register(Layer_Protocols.LSAP_addresses, 170, SNAP_Ext)

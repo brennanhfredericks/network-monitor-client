@@ -58,7 +58,7 @@ class Unknown(object):
 
 # https://stackoverflow.com/a/51286749
 class EnhancedJSONEncoder(json.JSONEncoder):
-    def default(self, o):
+    def default(self, o) -> Dict[str, str]:
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)
         return super().default(o)
