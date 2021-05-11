@@ -115,10 +115,11 @@ class Interface_Listener(object):
                 s = time.monotonic()
                 try:
                     packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
+                    sniffed_timestamp: float = time.time()
                     #packet = (5545, 4545454)
 
                     await asyncio.sleep(0.01)
-                    await self.raw_data_queue.put(packet)
+                    await self.raw_data_queue.put((sniffed_timestamp, packet))
                 except CancelledError as e:
                     # clean up and re raise to end
                     print("listener service cancelled", e)

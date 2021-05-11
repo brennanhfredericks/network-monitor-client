@@ -124,6 +124,7 @@ class Submitter(object):
 
         async with ClientSession() as session:
             for data in self.__buffer:
+                data["Info"]["Submitter_Timestamp"] = time.time()
                 task: Task = asyncio.create_task(
                     self._post_or_disk(data, session))
                 tasks.append(task)
@@ -179,7 +180,7 @@ class Packet_Submitter(object):
 
             except CancelledError as e:
                 await asyncio.gather(*self._submitter._tasks, return_exception=True)
-                print("packet parser service cancelled", e)
+                print("packet submitter service cancelled", e)
                 raise e
             except Exception as e:
                 await logger.exception(f"submitter_exception: {e}")

@@ -173,7 +173,7 @@ class Packet_Parser(object):
             try:
                 s = time.monotonic()
 
-                raw_bytes, address = await self.raw_data_queue.get()
+                sniffed_timestamp, (raw_bytes, address) = await self.raw_data_queue.get()
 
                 # do processing with data
                 af_packet: AF_Packet = AF_Packet(address)
@@ -194,10 +194,18 @@ class Packet_Parser(object):
                 self.raw_data_queue.task_done()
 
                 # implement packet filter here before adding data to ouput queue
-                packet: Optional[Dict[str, Dict[str, Union[str, int]]]] = self.packet_filter.apply(
+                packet: Optional[Dict[str, Dict[str, Union[str, int, float]]]] = self.packet_filter.apply(
                     af_packet, out_packet)
 
                 if packet is not None:
+                    processed_timestamp = time.time()
+                    info = {
+                        "Sniffed_Timestamp": sniffed_timestamp,
+                        "Processed_Timestamp": processed_timestamp,
+                        "Size": len(raw_bytes)
+                    }
+                    packet["Info"] = info
+
                     await self.processed_data_queue.put(packet)
 
                 # implement stream holder here
