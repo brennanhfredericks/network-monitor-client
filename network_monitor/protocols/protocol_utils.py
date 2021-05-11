@@ -34,7 +34,7 @@ def grouper(iterable: Iterable, n: int, fillvalue: Optional[str] = None) -> list
 @dataclasses.dataclass
 class Unknown(object):
     Description = "Unknown Protocol"
-    Identifier: -99
+    Identifier = -99
     Message: str
     Protocol_Identifier: int
 

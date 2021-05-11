@@ -7,7 +7,7 @@ import asyncio
 
 from dataclasses import dataclass
 from typing import Union, Dict, Any, List, Tuple, Optional
-from aiologger import Logger
+
 from .protocol_utils import (
     get_ipv4_addr,
     get_ipv6_addr,
@@ -312,10 +312,7 @@ class ARP(object):
         elif self.PTYPE == 34525:
             return get_ipv6_addr(proto_addr)
         else:
-            # add logging functionality here
-            asyncio.create_task(logger.warning(
-                f" address ARP decoding not implemented for {self.PTYPE}, address {proto_addr}"
-            ))
+
             return str(proto_addr)
 
 

@@ -44,7 +44,7 @@ class SNAP_Ext(object):
 
     def __init__(self, raw_bytes: bytes) -> None:
         __oui, __proto = struct.unpack("! 3s H", raw_bytes[:5])
-        self.OUI = int.from_bytes(_oui, sys.byteorder)
+        self.OUI = int.from_bytes(__oui, sys.byteorder)
         self.Protocol_ID = __proto
 
         self.__raw_bytes: bytes = raw_bytes
@@ -65,7 +65,7 @@ class SNAP_Ext(object):
 
         if self.OUI == 0:
             self.__encap = Protocol_Parser.parse(
-                Layer_Protocols.Ethertype, self.protocol_id, remaining_raw_bytes
+                Layer_Protocols.Ethertype, self.Protocol_ID, remaining_raw_bytes
             )
         else:
             # if the OUI is an OUI for a particular organization, the protocol ID is

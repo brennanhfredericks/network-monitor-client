@@ -20,6 +20,7 @@ from .services import (
     Filter,
 )
 
+from aiologger import Logger
 
 from .protocols import Protocol_Parser
 from .configurations import generate_configuration_template, DevConfig, load_config_from_file
@@ -45,6 +46,14 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
     processed_queue: asyncio.Queue = asyncio.Queue()
 
+    # setup logger
+    logger = Logger.with_default_handlers()
+
+    # setup protocol parser unknonw output dir
+    Protocol_Parser.set_log_directory(app_config.UnknownLogEndpoint)
+
+    await Protocol_Parser.set_logger(logger)
+
     # holds all coroutine services
     services_manager: Service_Manager = Service_Manager()
 
@@ -53,12 +62,12 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
         app_config.InterfaceName, raw_queue)
 
     listener_service_task: Task = asyncio.create_task(
-        listener_service.worker(), name="listener-service-task")
+        listener_service.worker(logger), name="listener-service-task")
 
     services_manager.add_service(
         "interface_listener", listener_service_task)
 
-    # setup packet parser
+    # configure packet parser
     packet_filter: Packet_Filter = Packet_Filter(
         app_config.FilterSubmissionTraffic)
 
@@ -67,7 +76,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
         raw_queue, processed_queue, packet_filter)
 
     packet_parser_service_task: Task = asyncio.create_task(
-        packer_parser.worker(), name="packet-parser-service-task")
+        packer_parser.worker(logger), name="packet-parser-service-task")
 
     services_manager.add_service(
         "packet_parser", packet_parser_service_task)

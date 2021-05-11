@@ -1,7 +1,6 @@
-
-import threading
 import time
 import json
+
 
 from asyncio import Queue, CancelledError
 
@@ -9,9 +8,8 @@ from typing import Dict, Any, Union, List, Optional
 from dataclasses import dataclass
 
 from ..protocols import AF_Packet, Packet_802_3, Packet_802_2, Protocol_Parser
-
 from ..filters.deep_walker import flatten_protocols
-
+from aiologger import Logger
 """
     Packet Filter
 
@@ -168,7 +166,7 @@ class Packet_Parser(object):
         self.processed_data_queue = processed_queue
         self.packet_filter = packet_filter
 
-    async def worker(self) -> None:
+    async def worker(self, logger: Logger) -> None:
 
         while True:
 
@@ -205,8 +203,9 @@ class Packet_Parser(object):
                 # implement stream holder here
                 print("packet parser time diff: ", time.monotonic()-s)
             except CancelledError as e:
-                print("packet parser service cancelled", e)
+                # triggered by user
+                logger.info("packet parser service cancelled", e)
                 # check that raw queue empty
                 raise e
             except Exception as e:
-                print(e)
+                logger.exception(f"other exception in packer_parser: {e}")

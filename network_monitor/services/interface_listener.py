@@ -108,10 +108,7 @@ class Interface_Listener(object):
         return interface.recvfrom(self.BUFFER_SIZE)
 
     # if operation is not suspended or waiting it will pegg processor
-    async def worker(self) -> None:
-
-        logger = Logger.with_default_handlers(
-            name="interface-listener-service-logger")
+    async def worker(self, logger: Logger) -> None:
 
         with InterfaceContextManager(self.interface_name) as interface:
             while True:

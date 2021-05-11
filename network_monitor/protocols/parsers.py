@@ -1,11 +1,14 @@
 import os
 import time
-import binascii
+import base64
+import asyncio
 
-from typing import Dict, Union, Any
+from typing import Dict, Union, Any, Optional
 from functools import lru_cache
 
+
 from .protocol_utils import Unknown
+from aiologger import Logger
 
 from .layer import Layer_Protocols
 
@@ -22,6 +25,8 @@ class Parser:
         for layer_protocol in Layer_Protocols:
             self.__protocol_parsers[layer_protocol] = {}
 
+        self.logger: Optional[Logger] = None
+        self.__log: Optional[str] = None
         self.__fname: str = f"raw_unknown_protocols_{int(time.time())}.lp"
 
     @property
@@ -35,10 +40,16 @@ class Parser:
 
         self.__log: str = log_dir
 
+    async def set_logger(self, logger: Logger()) -> None:
+        self.logger = Logger
+
     def register(self, layer: int, identifier: int, protocol_parser: Any):
         # check if dataclass and callable
         self.__protocol_parsers[layer][identifier] = protocol_parser
         self.__protocol_str_lookup[protocol_parser.__name__] = protocol_parser
+
+    def _register_protocol_class_name(self, class_name, protocol_parser):
+        self.__protocol_str_lookup[class_name] = protocol_parser
 
     def get_protocol_class_by_name(self, class_name: str) -> Any:
         """ return an empty protocol class used in comparison """
@@ -67,20 +78,26 @@ class Parser:
         else:
             return res
 
-    def parse(self, layer: int, identifier: int, raw_bytes: bytes):
+    async def log(self, message) -> None:
+        # add items here to event loop?
+        await self.logger.exception(message)
+
+    def parse(self, layer: int, identifier: int, raw_bytes: bytes) -> Any:
         """ use to register parser"""
         try:
             res = self.__protocol_parsers[layer][identifier](raw_bytes)
 
         except KeyError as e:
-            path = os.path.join(self.__log, self.__fname)
+            path: str = os.path.join(self.__log, self.__fname)
             with open(path, "ab") as fout:
                 info = f"{layer}_{identifier}"
-                fout.write(binascii.b2a_base64(info.encode()))
-                fout.write(binascii.b2a_base64(raw_bytes))
-            print(
-                f"Protocol Not Implemented - Layer: {layer}, identifier: {identifier}"
-            )
+                fout.write(base64.b64encode(info.encode()))
+                fout.write(base64.b64encode(raw_bytes))
+            # task = asyncio.create_task(self.log(
+            #    f"Protocol Not Implemented Exception - Layer: {layer}, identifier: {identifier}"
+            # ))
+        except Exception as e:
+            #task = asyncio.create_task(self.log(f"Protocol Exception: {e}"))
             return Unknown("no protocol parser available", identifier, raw_bytes)
         else:
             return res
