@@ -102,9 +102,9 @@ class Submitter(object):
                         aiohttp.ClientError,
                         aiohttp.http_exceptions.HttpProcessingError,
                     ) as e:
-                        await self.logger.warning("remote storage not available")
+                        await self.logger.warning(f"remote storage not available: {e}")
                     except Exception as e:
-                        await self.logger.exception("exception when trying to clear logs")
+                        await self.logger.exception(f"exception when trying to clear logs: {e}")
                     else:
                         # only run when no exception occurs
                         await aiofiles.os.remove(infile)
@@ -114,10 +114,10 @@ class Submitter(object):
         try:
             await self._post_to_server(data, session)
         except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
-            await self.logger.warning("remote storage not available")
+            await self.logger.warning(f"remote storage not available: {e}")
             await self._local_storage(data)
         except Exception as e:
-            await self.logger.exception("exception when trying to switch between post_or_disk")
+            await self.logger.exception(f"exception when trying to switch between post_or_disk: {e}")
 
     async def _process(self) -> None:
         tasks: List[Task] = []
@@ -179,6 +179,7 @@ class Packet_Submitter(object):
 
             except CancelledError as e:
                 await asyncio.gather(*self._submitter._tasks, return_exception=True)
+                print("packet parser service cancelled", e)
                 raise e
             except Exception as e:
-                logger.exception(f"submitter_exception: {e}")
+                await logger.exception(f"submitter_exception: {e}")

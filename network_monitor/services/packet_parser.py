@@ -201,11 +201,11 @@ class Packet_Parser(object):
                     await self.processed_data_queue.put(packet)
 
                 # implement stream holder here
-                print("packet parser time diff: ", time.monotonic()-s)
+                #print("packet parser time diff: ", time.monotonic()-s)
             except CancelledError as e:
                 # triggered by user
-                logger.info("packet parser service cancelled", e)
+                print("packet parser service cancelled", e)
                 # check that raw queue empty
                 raise e
             except Exception as e:
-                logger.exception(f"other exception in packer_parser: {e}")
+                await logger.exception(f"other exception in packer_parser: {e}")

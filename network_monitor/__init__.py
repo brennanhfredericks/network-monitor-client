@@ -92,7 +92,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
         packet_submitter.worker(logger))
     # test only
 
-    await asyncio.sleep(5)
+    await asyncio.sleep(1)
 
     listener_service_task.cancel()
 
@@ -103,7 +103,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     packet_parser_service_task.cancel()
     packet_submitter_service_task.cancel()
 
-    await asyncio.gather(listener_service_task, packet_parser_service_task, packet_submitter_service_task, return_exceptions=True)
+    await asyncio.gather(listener_service_task, packet_submitter_service_task, packet_parser_service_task, return_exceptions=True)
 
     # print("stopped all")
 

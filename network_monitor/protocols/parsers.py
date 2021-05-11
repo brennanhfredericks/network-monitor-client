@@ -38,12 +38,12 @@ class Parser:
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
 
-        self.__log: str = log_dir
+        self.__log = log_dir
 
     async def set_logger(self, logger: Logger()) -> None:
         self.logger = Logger
 
-    def register(self, layer: int, identifier: int, protocol_parser: Any):
+    def register(self, layer: Layer_Protocols, identifier: int, protocol_parser: Any):
         # check if dataclass and callable
         self.__protocol_parsers[layer][identifier] = protocol_parser
         self.__protocol_str_lookup[protocol_parser.__name__] = protocol_parser
@@ -83,7 +83,7 @@ class Parser:
         # await self.logger.exception("Sd")
         ...
 
-    def parse(self, layer: int, identifier: int, raw_bytes: bytes) -> Any:
+    def parse(self, layer: Layer_Protocols, identifier: int, raw_bytes: bytes) -> Any:
         """ use to register parser"""
         try:
             res = self.__protocol_parsers[layer][identifier](raw_bytes)
@@ -97,7 +97,9 @@ class Parser:
             # task = asyncio.create_task(self.log(
             #    f"Protocol Not Implemented Exception - Layer: {layer}, identifier: {identifier}"
             # ))
+
         except Exception as e:
+
            # asyncio.create_task(self.log(f"Protocol Exception: {e}"))
             return Unknown("no protocol parser available", identifier, raw_bytes)
         else:

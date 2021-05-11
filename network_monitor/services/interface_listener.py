@@ -128,5 +128,5 @@ class Interface_Listener(object):
                     # add logging functionality here
                     print("other exception: ", e)
                     await logger.exception("listener receiving data from socket {e}")
-                print("interface listener time diff: ", time.monotonic()-s)
+                #print("interface listener time diff: ", time.monotonic()-s)
             print("done")

@@ -59,7 +59,6 @@ class IPv4(object):
         self.Version: int = __vihl >> 4
 
         self.IHL: int = __vihl & 15
-        self.__verify_checksum(raw_bytes[: self.IHL * 4])
         self.DSCP: int = (__dsen & 252) >> 2
         self.ECN: int = __dsen & 3
         self.Total_Length: int = __tl
@@ -306,7 +305,6 @@ class ARP(object):
         return dataclasses.asdict(self)
 
     def _decode_protocol_addr(self, proto_addr: int) -> str:
-        logger = Logger.with_default_handlers()
         if self.PTYPE == 2048:
             return get_ipv4_addr(proto_addr)
         elif self.PTYPE == 34525:
