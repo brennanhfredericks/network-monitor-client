@@ -78,9 +78,10 @@ class Parser:
         else:
             return res
 
-    async def log(self, message) -> None:
+    async def log(self, message: str) -> None:
         # add items here to event loop?
-        await self.logger.exception(message)
+        # await self.logger.exception("Sd")
+        ...
 
     def parse(self, layer: int, identifier: int, raw_bytes: bytes) -> Any:
         """ use to register parser"""
@@ -97,7 +98,7 @@ class Parser:
             #    f"Protocol Not Implemented Exception - Layer: {layer}, identifier: {identifier}"
             # ))
         except Exception as e:
-            #task = asyncio.create_task(self.log(f"Protocol Exception: {e}"))
+           # asyncio.create_task(self.log(f"Protocol Exception: {e}"))
             return Unknown("no protocol parser available", identifier, raw_bytes)
         else:
             return res
