@@ -166,7 +166,7 @@ class Packet_Submitter(object):
             url, log_dir, retryinterval=retryinterval)
 
     async def worker(self, logger: Logger):
-        self._submitter.set_logger(logger)
+        await self._submitter.set_logger(logger)
         while True:
             try:
 

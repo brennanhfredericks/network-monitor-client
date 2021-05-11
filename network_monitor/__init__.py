@@ -80,17 +80,30 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
 
     services_manager.add_service(
         "packet_parser", packet_parser_service_task)
+
+    # configure submitter service
+    packet_submitter: Packet_Submitter = Packet_Submitter(
+        processed_queue,
+        app_config.RemoteMetadataStorage,
+        app_config.local_metadata_storage_path(),
+        app_config.ResubmissionInterval
+    )
+    packet_submitter_service_task: Task = asyncio.create_task(
+        packet_submitter.worker(logger))
     # test only
+
     await asyncio.sleep(5)
 
     listener_service_task.cancel()
 
     # wait for raw queue to finish processing
-    # await raw_queue.join()
+    await raw_queue.join()
+    await processed_queue.join()
 
     packet_parser_service_task.cancel()
+    packet_submitter_service_task.cancel()
 
-    await asyncio.gather(listener_service_task, packet_parser_service_task, return_exceptions=True)
+    await asyncio.gather(listener_service_task, packet_parser_service_task, packet_submitter_service_task, return_exceptions=True)
 
     # print("stopped all")
 
