@@ -63,7 +63,7 @@ class InterfaceContextManager(object):
         elif os.name == "nt":
             raise NotImplemented
             # test to see if working
-            self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
+            # self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
             # raise ValueError(f"low level interface for Windows operating system not implemented yet")
         # other os
         else:
@@ -88,7 +88,8 @@ class InterfaceContextManager(object):
             fcntl.ioctl(self._llsocket, FLAGS.SIOCSIFFLAGS, self._ifr)
         # windows
         elif os.name == "nt":
-            self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+            #self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+            ...
 
 
 class Interface_Listener(object):
@@ -111,14 +112,15 @@ class Interface_Listener(object):
     async def worker(self, logger: Logger) -> None:
 
         with InterfaceContextManager(self.interface_name) as interface:
+
             while True:
                 s = time.monotonic()
                 try:
+                    #
                     packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
                     sniffed_timestamp: float = time.time()
-                    #packet = (5545, 4545454)
 
-                    await asyncio.sleep(0.01)
+                    await asyncio.sleep(0.0000001)
                     await self.raw_data_queue.put((sniffed_timestamp, packet))
                 except CancelledError as e:
                     # clean up and re raise to end
@@ -130,4 +132,4 @@ class Interface_Listener(object):
                     print("other exception: ", e)
                     await logger.exception("listener receiving data from socket {e}")
                 #print("interface listener time diff: ", time.monotonic()-s)
-            print("done")
+        print("done")
