@@ -8,8 +8,9 @@ import os
 import re
 import asyncio
 
+
 from asyncio import CancelledError, Task
-from typing import Optional
+from typing import Optional, List, Any
 
 from .services import (
     Service_Manager,
@@ -46,13 +47,14 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
     processed_queue: asyncio.Queue = asyncio.Queue()
 
+    # other task list, used to inject asynchruous functionality for blocking code
+    global_task_list: List[Task] = []
+
     # setup logger
     logger = Logger.with_default_handlers()
 
-    # setup protocol parser unknonw output dir
-    Protocol_Parser.set_log_directory(app_config.UnknownLogEndpoint)
-
-    await Protocol_Parser.set_logger(logger)
+    # configure logger and output directory Protocol Parser
+    await Protocol_Parser.init_asynchronous_operation(app_config.undefined_storage_path(), logger, global_task_list)
 
     # holds all coroutine services
     services_manager: Service_Manager = Service_Manager()
@@ -92,7 +94,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
         packet_submitter.worker(logger))
     # test only
 
-    await asyncio.sleep(10)
+    await asyncio.sleep(5)
 
     listener_service_task.cancel()
 
@@ -103,7 +105,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     packet_parser_service_task.cancel()
     packet_submitter_service_task.cancel()
 
-    await asyncio.gather(listener_service_task, packet_submitter_service_task, packet_parser_service_task, return_exceptions=True)
+    await asyncio.gather(listener_service_task, packet_submitter_service_task, packet_parser_service_task, *global_task_list, return_exceptions=True)
 
     # print("stopped all")
 

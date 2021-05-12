@@ -2,8 +2,10 @@ import os
 import time
 import base64
 import asyncio
+import aiofiles
 
-from typing import Dict, Union, Any, Optional
+from asyncio import Task
+from typing import Dict, Union, Any, Optional, List
 from functools import lru_cache
 
 
@@ -34,14 +36,14 @@ class Parser:
 
         return self.__protocol_parsers
 
-    def set_log_directory(self, log_dir: str) -> None:
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+    async def init_asynchronous_operation(self, undefined_output_directory: str, logger: Logger(), task_list: List[Task]) -> None:
 
-        self.__log = log_dir
+        if not os.path.exists(undefined_output_directory):
+            os.makedirs(undefined_output_directory)
 
-    async def set_logger(self, logger: Logger()) -> None:
-        self.logger = Logger
+        self.__log = undefined_output_directory
+        self.logger: Logger = logger
+        self.task_list: List[Task] = []
 
     def register(self, layer: Layer_Protocols, identifier: int, protocol_parser: Any):
         # check if dataclass and callable
@@ -78,29 +80,49 @@ class Parser:
         else:
             return res
 
+    async def unknown_storage(self, info: str, raw_bytes: bytes) -> None:
+        async with aiofiles.open(os.path.join(self.__log, self.__fname), "ab") as fout:
+            await fout.write(base64.b64encode(info.encode()))
+            await fout.write(base64.b64encode(raw_bytes))
+
     async def log(self, message: str) -> None:
-        # add items here to event loop?
-        # await self.logger.exception("Sd")
-        ...
+        await self.logger.exception(message)
+
+    # task to asynchronous execution loop
+    def execute_async(self, coro, *args):
+
+        self.task_list.append(
+            asyncio.create_task(
+                coro(*args)
+            )
+        )
 
     def parse(self, layer: Layer_Protocols, identifier: int, raw_bytes: bytes) -> Any:
         """ use to register parser"""
         try:
             res = self.__protocol_parsers[layer][identifier](raw_bytes)
 
+        # asnyc
         except KeyError as e:
-            path: str = os.path.join(self.__log, self.__fname)
-            with open(path, "ab") as fout:
-                info = f"{layer}_{identifier}"
-                fout.write(base64.b64encode(info.encode()))
-                fout.write(base64.b64encode(raw_bytes))
-            # task = asyncio.create_task(self.log(
-            #    f"Protocol Not Implemented Exception - Layer: {layer}, identifier: {identifier}"
-            # ))
+            self.execute_async(
+                self.log,
+                f"Protocol Not Implemented Exception - Layer: {layer}, identifier: {identifier}"
+
+            )
+            self.execute_async(
+                self.unknown_storage,
+                f"{layer}_{identifier}",
+                raw_bytes,
+
+            )
 
         except Exception as e:
+            self.execute_async(
+                self.log,
+                f"Protocol Exception: {e}"
 
-           # asyncio.create_task(self.log(f"Protocol Exception: {e}"))
+            )
+
             return Unknown("no protocol parser available", identifier, raw_bytes)
         else:
             return res

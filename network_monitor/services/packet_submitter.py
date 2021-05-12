@@ -114,7 +114,7 @@ class Submitter(object):
         try:
             await self._post_to_server(data, session)
         except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
-            await self.logger.warning(f"remote storage not available: {e}")
+            await self.logger.warning(f"something wrong with remote storage: {e}")
             await self._local_storage(data)
         except Exception as e:
             await self.logger.exception(f"exception when trying to switch between post_or_disk: {e}")
