@@ -89,7 +89,7 @@ class Parser:
         await self.logger.exception(message)
 
     # task to asynchronous execution loop
-    def execute_async(self, coro, *args):
+    def execute_async(self, coro, *args) -> None:
 
         self.task_list.append(
             asyncio.create_task(

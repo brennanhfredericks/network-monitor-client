@@ -9,11 +9,12 @@ import aiohttp
 import aiofiles
 import aiofiles.os
 import asyncio
+import io
 
 from aiohttp import ClientSession
 from aiologger import Logger
 from asyncio import Task, Queue, CancelledError
-
+from aiofiles.threadpool import AsyncFileIO
 from network_monitor.filters import flatten_protocols
 from network_monitor.protocols import EnhancedJSONEncoder
 
@@ -56,19 +57,18 @@ class Submitter(object):
         self.max_buffer_size: int = max_buffer_size
         self.__buffer: Dict[str, Dict[str, Union[str, int]]] = []
 
-    async def set_logger(self, logger: Logger):
+    async def set_logger(self, logger: Logger) -> None:
         self.logger: Logger = logger
 
     async def _post_to_server(self, data, session: ClientSession) -> None:
 
+        # return context manager
         resp = await session.post(self.url, json=data)
         # if fail raise ClientResponseError
         resp.raise_for_status()
 
-    async def _local_storage(self, data: Dict[str, Dict[str, Union[str, int]]]) -> None:
-
-        async with aiofiles.open(self.out_file, "a") as fout:
-            await fout.write(json.dumps(data) + "\n")
+    async def _local_storage(self, data: Dict[str, Dict[str, Union[str, int]]], fout: AsyncFileIO) -> None:
+        await fout.write(json.dumps(data) + "\n")
 
         self._logs_written = True
 
@@ -109,13 +109,13 @@ class Submitter(object):
                         # only run when no exception occurs
                         await aiofiles.os.remove(infile)
 
-    async def _post_or_disk(self, data, session) -> None:
+    async def _post_or_disk(self, data, session, fout: AsyncFileIO) -> None:
 
         try:
             await self._post_to_server(data, session)
         except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
             await self.logger.warning(f"something wrong with remote storage: {e}")
-            await self._local_storage(data)
+            await self._local_storage(data, fout)
         except Exception as e:
             await self.logger.exception(f"exception when trying to switch between post_or_disk: {e}")
 
@@ -123,13 +123,15 @@ class Submitter(object):
         tasks: List[Task] = []
 
         async with ClientSession() as session:
-            for data in self.__buffer:
-                data["Info"]["Submitter_Timestamp"] = time.time()
-                task: Task = asyncio.create_task(
-                    self._post_or_disk(data, session))
-                tasks.append(task)
+            async with aiofiles.open(self.out_file, "a") as fout:
+                for data in self.__buffer:
+                    data["Info"]["Submitter_Timestamp"] = time.time()
+                    task: Task = asyncio.create_task(
+                        self._post_or_disk(data, session, fout)
+                    )
+                    tasks.append(task)
 
-            await asyncio.gather(*tasks)
+                await asyncio.gather(*tasks)
 
         # clear out internal buffer
         self.__buffer.clear()
