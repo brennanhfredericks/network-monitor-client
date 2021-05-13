@@ -21,6 +21,7 @@ from .services import (
     Filter,
 )
 
+from logging import Formatter
 from aiologger import Logger
 
 from .protocols import Protocol_Parser
@@ -51,6 +52,8 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     global_task_list: List[Task] = []
 
     # setup logger
+    # gbl_format = Formatter(
+    #     "%(asctime)s %(levelname)s %(message)s %(funcName)s")
     logger = Logger.with_default_handlers()
 
     # configure logger and output directory Protocol Parser
@@ -94,7 +97,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
         packet_submitter.worker(logger))
     # test only
 
-    await asyncio.sleep(5)
+    await asyncio.sleep(300)
 
     listener_service_task.cancel()
 

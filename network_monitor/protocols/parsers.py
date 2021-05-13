@@ -70,7 +70,7 @@ class Parser:
 
     def get_protocol_name_by_class(self, cls: Any) -> str:
         """ return name of class"""
-        # inefficient,only use to ensure the latest version is use cach
+
         rev_protocol_str = self._reverse_protocols_str_lookup()
         try:
             res = rev_protocol_str[cls]

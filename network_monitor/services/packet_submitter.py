@@ -12,9 +12,11 @@ import asyncio
 import io
 
 from aiohttp import ClientSession
-from aiologger import Logger
+from aiologger import Logger, formatters
+
 from asyncio import Task, Queue, CancelledError
 from aiofiles.threadpool import AsyncFileIO
+
 from network_monitor.filters import flatten_protocols
 from network_monitor.protocols import EnhancedJSONEncoder
 
