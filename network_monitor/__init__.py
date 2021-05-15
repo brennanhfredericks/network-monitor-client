@@ -97,7 +97,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
         packet_submitter.worker(logger))
     # test only
 
-    await asyncio.sleep(300)
+    await asyncio.sleep(600)
 
     listener_service_task.cancel()
 

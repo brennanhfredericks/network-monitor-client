@@ -21,14 +21,15 @@ class TCP(object):
     Source_Port: int
     Destination_Port: int
     Sequence_Number: int
-    Acknowledgment_Number: int  # if ACK set
+    Acknowledgement_Number: int  # if ACK set
     Data_Offset: int
     Reserved: int
-    Flags: int
+    Flags: dict
     Window_Size: int
     Checksum: int
     Urgent_Pointer: int  # if URG set
     Options: dict
+    Payload_Size: int
 
     def __init__(self, raw_bytes: bytes) -> None:
         # fixed header part
@@ -37,22 +38,21 @@ class TCP(object):
             __des_prt,
             __seq_num,
             __ack_num,
-            __d_offset_flags,
+            __d_offset_reserved_ns,
+            _flags,
             __win_size,
             __chk_sum,
             __urg_ptr,
-        ) = struct.unpack("! H H L L 2s H H H", raw_bytes[:20])
+        ) = struct.unpack("! H H L L B B H H H", raw_bytes[:20])
 
         self.Source_Port: int = __src_prt
         self.Destination_Port: int = __des_prt
         self.Sequence_Number: int = __seq_num
-        self.Acknowledgment_Number: int = __ack_num
+        self.Acknowledgement_Number: int = __ack_num
 
-        self.Data_Offset: int = __d_offset_flags[0] >> 4
-        self.Reserved: int = (__d_offset_flags[0] & 14) >> 1
-        self.Flags: int = (
-            int.from_bytes(__d_offset_flags, sys.byteorder) & 511
-        )  # added ability to index for specific flags
+        self.Data_Offset: int = __d_offset_reserved_ns >> 4
+        self.Reserved: int = (__d_offset_reserved_ns & 14) >> 1
+        self.__parse_flags(__d_offset_reserved_ns & 1, _flags)
 
         self.Window_Size: int = __win_size
         self.Checksum: int = __chk_sum
@@ -69,10 +69,26 @@ class TCP(object):
             self.__parse_options(raw_options)
 
             self._payload = raw_bytes[offset:]
+
         else:
             # payload data probabily encrypted
             self.Options: Dict[str, Union[str, int]] = {}
             self._payload = raw_bytes[20:]
+
+        self.Payload_Size = len(self._payload)
+
+    def __parse_flags(self, ns_flag: int, other_flags: int) -> None:
+        self.Flags: Dict[str, int] = {
+            "NS": ns_flag,
+            "CWR": (other_flags & 128) >> 7,
+            "ECE": (other_flags & 64) >> 6,
+            "URG": (other_flags & 32) >> 5,
+            "ACK": (other_flags & 16) >> 4,
+            "PSH": (other_flags & 8) >> 3,
+            "RST": (other_flags & 4) >> 2,
+            "SYN": (other_flags & 2) >> 1,
+            "FIN": (other_flags & 1)
+        }
 
     def __parse_options(self, raw_options_bytes) -> None:
         # Option-Kind (1 byte), Option-Length (1 byte), Option-Data (variable).
@@ -107,6 +123,7 @@ class UDP(object):
     Destination_Port: int
     Length: int
     Checksum: int
+    Payload_Size: int
 
     def __init__(self, raw_bytes: bytes) -> None:
 
@@ -124,6 +141,7 @@ class UDP(object):
         # should be based on length field, This field specifies the length in bytes of the UDP header and UDP data.
         # print(self.length, len(self._raw_bytes))
         self._payload: bytes = raw_bytes[8:]
+        self.Payload_Size = len(self._payload)
 
     def raw(self) -> bytes:
         return self._raw_bytes
