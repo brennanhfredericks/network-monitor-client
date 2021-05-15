@@ -1,16 +1,17 @@
 import sys
-
 sys.path.insert(0, "../")
 
-import queue
-import threading
 import base64
-import binascii
+
+import asyncio
 
 import os
 import time
-import signal
 import collections
+import aiofiles
+import json
+
+from aiologger import Logger
 
 from network_monitor import (
     Service_Manager,
@@ -34,101 +35,89 @@ from network_monitor.protocols import (
 from network_monitor.filters import get_protocol, present_protocols
 
 # write to tmp file and replace with os.replace
-def log_packets_based_on_protocols(
-    ifname: str,
-    proto_list: list,
-    min_number: int = 5,
-    log_dir="./logger_output",
-    report_interval: int = 5,
-):
+
+
+
+async def _log_raw(queue):
     start_time = int(time.time())
-    service_manager = Service_Manager(ifname)
-    input_queue = queue.Queue()
-    # output_queue = queue.Queue()
+    log_dir="./test/data/raw/"
+    report_interval= 5
 
-    # start network listener
-    interface_listener = Interface_Listener(ifname, input_queue)
-    service_manager.start_service("interface listener", interface_listener)
-
-    tracker = collections.Counter({proto.identifier: 0 for proto in proto_list})
-
-    def create_name() -> str:
-        """
-        create name for file
-        raw_protocols_1548866456123_ARP_IPv4_IPv6_ICMP.lp"""
-
-        fname = f"raw2_protocols_{start_time}"
-
-        for proto_cls in proto_list:
-            fname += f"_{proto_cls.__name__}"
-
-        fname += ".lp"
-
-        return fname
-
-    # exit cleanly
-    def signal_handler(sig, frame):
-        # log_to_disk()
-        service_manager.stop_all_services()
-        sys.exit(0)
-
-    signal.signal(signal.SIGTSTP, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-
-    fname = create_name()
+    fname = f"raw2_protocols_{start_time}.lp"
 
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    waitfor = True
+    tracker = collections.Counter()
     last_report_time = time.time()
-    with open(os.path.join(log_dir, fname), "w") as fout:
-        while waitfor:
 
-            if not input_queue.empty():
-
-                raw_bytes, address = input_queue.get()
-
+    async with aiofiles.open(os.path.join(log_dir, fname), "w") as fout:
+        while True:
+            try:
+                _,(raw_bytes, address) = await queue.get()
+               
                 af_packet = AF_Packet(address)
 
-                fout.write(af_packet.serialize() + "\n")
-                if af_packet.proto > 1500:
+            
+                if af_packet.Ethernet_Protocol_Number > 1500:
                     out_packet = Packet_802_3(raw_bytes)
-                    write_packet = False
-                    for identifier in present_protocols(out_packet):
-                        if identifier in tracker.keys():
-                            tracker[identifier] += 1
-                            write_packet = True
-
-                    if write_packet:
-
-                        __tracker = {k: v for k, v in tracker.items()}
-
-                        r_raw_bytes = base64.b64encode(raw_bytes).decode("utf-8")
-
-                        fout.write(r_raw_bytes + "\n")
-
-                        now = time.time()
-                        if now - last_report_time > report_interval:
-                            last_report_time = now
-
-                            print(f"Tracker: {__tracker}")
                 else:
-                    r_raw_bytes = base64.b64encode(raw_bytes).decode("utf-8")
-                    fout.write(r_raw_bytes + "\n")
+                    out_packet = Packet_802_2(raw_bytes)
+                
+                await fout.write(json.dumps(af_packet.serialize()) + "\n")
+                r_raw_bytes = base64.b64encode(raw_bytes).decode("utf-8")
 
-                if all(map(lambda x: x >= min_number, tracker.values())):
-                    waitfor = False
+                await fout.write(r_raw_bytes + "\n")
 
-    service_manager.stop_all_services()
+                queue.task_done()
+            
+                for identifier in present_protocols(out_packet):
+                    tracker[identifier] += 1    
+
+                now = time.time()
+                if now - last_report_time > report_interval:
+                    __tracker = {k: v for k, v in tracker.items()}
+                    last_report_time = now
+                    print("queue size: ",queue.qsize())
+                    print("Tracker: ",__tracker)
+            except asyncio.CancelledError as e:
+
+                print("log service cancelled", e)
+
+                raise e
+            
+
+
+async def log_packets_based_on_protocols(
+    interfacename: str,
+
+):
+    
+    raw_queue = asyncio.Queue()
+ 
+    logger = Logger.with_default_handlers()
+
+
+    # start network listener
+    listener_service = Interface_Listener(interfacename, raw_queue)
+    
+    listener_service_task: Task = asyncio.create_task(
+        listener_service.worker(logger), name="listener-service-task")
+
+    log_task = asyncio.create_task(_log_raw(raw_queue))
+    await asyncio.sleep(600)
+    listener_service_task.cancel()
+    print("listener task cancelled")
+    await raw_queue.join()
+    print("raw queue empty")
+    await asyncio.sleep(2)
+    log_task.cancel()
+    print("log task cancelled")
+    await asyncio.gather(listener_service_task,log_task,return_exceptions=True)
 
 
 if __name__ == "__main__":
 
-    # log_packets_based_on_protocols("br0", [TCP, UDP], min_number=100)
-    # log_packets_based_on_protocols("br0", [IPv4, IPv6], min_number=100)
-    log_packets_based_on_protocols(
-        "enp0s3",
-        [IPv4, IPv6, UDP, TCP, ARP, ICMP, ICMPv6, IGMP, LLDP, CDP],
-        min_number=10,
-    )
+    asyncio.run(log_packets_based_on_protocols(
+        "eth0"
+    ))
