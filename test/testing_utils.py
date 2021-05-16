@@ -1,9 +1,19 @@
+from typing import List
 import base64
 import json
 import os
 import asyncio
 import pytest
 import aiofiles
+import sys
+import itertools
+sys.path.insert(0, "./")
+
+from network_monitor.filters import get_protocol, present_protocols  # noqa
+from network_monitor.protocols import (  # noqa
+    Packet_802_3,
+    Packet_802_2,
+)
 
 
 async def load_submitter_local_log(filename):
@@ -16,7 +26,7 @@ async def load_submitter_local_log(filename):
             yield json.loads(line)
 
 
-async def load_raw_listener_service_ouput(filename: str):
+async def load_raw_listener_service_output(filename: str):
     """load file and return raw pack bytes"""
 
     if not os.path.exists(filename):
@@ -36,12 +46,32 @@ async def load_raw_listener_service_ouput(filename: str):
             yield af_packet, packet
 
 
+async def load_packet_parser_comparison_values(filename: str) -> List[int]:
+
+    async with aiofiles.open(filename, "r") as fin:
+        async for line in fin:
+            protos = [int(i) for i in line.split(",")]
+            yield protos
+
+
 async def generate_packet_parser_comparison_values(filename: str):
+    f = filename.split(".")[0]
+    async with aiofiles.open(f"{f}_present_protocols.lp", "w") as fout:
 
-    async for af_packet, raw_bytes in load_raw_listener_service_ouput(filename):
-        # print(af_address)
-        ...
+        async for af_packet, raw_bytes in load_raw_listener_service_output(filename):
 
+            if af_packet["Ethernet_Protocol_Number"] >= 0 and af_packet["Ethernet_Protocol_Number"] <= 1500:
+
+                # logical link control (LLC) Numbers
+                out_packet = Packet_802_2(raw_bytes)
+            else:
+                # check whether WIFI packets are different from ethernet packets
+
+                out_packet = Packet_802_3(raw_bytes)
+
+            res = present_protocols(out_packet)
+
+            await fout.write(",".join(str(i) for i in res) + "\n")
 
 if __name__ == "__main__":
 
