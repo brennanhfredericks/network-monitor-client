@@ -164,7 +164,11 @@ class Packet_Parser(object):
 
         self.raw_data_queue = raw_data_queue
         self.processed_data_queue = processed_queue
-        self.packet_filter = packet_filter
+
+        if packet_filter is None:
+            self.packet_filter = Packet_Filter()
+        else:
+            self.packet_filter = packet_filter
 
     async def worker(self, logger: Logger) -> None:
 
@@ -194,6 +198,7 @@ class Packet_Parser(object):
                 self.raw_data_queue.task_done()
 
                 # implement packet filter here before adding data to ouput queue
+
                 packet: Optional[Dict[str, Dict[str, Union[str, int, float]]]] = self.packet_filter.apply(
                     af_packet, out_packet)
 
