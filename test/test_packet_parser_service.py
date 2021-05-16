@@ -20,9 +20,9 @@ from network_monitor.protocols import (  # noqa
 async def parsing_raw_data(filename: str):
 
     async for af_address, raw_bytes in load_raw_listener_service_ouput(filename):
-        print(af_address)
+        # print(af_address)
         # print(raw_bytes)
-
+        ...
     # can cause issue if only one case availabel due to interpolation
     assert False
 
