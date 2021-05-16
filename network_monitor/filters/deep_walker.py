@@ -15,13 +15,12 @@ def flatten_protocols(out_packet):
     """ return present protocols as list """
     protocols = [out_packet]
     out = out_packet
-    loop = True
-    while loop:
+    while True:
         out = out.upper_layer()
         if out is not None:
             protocols.append(out)
         else:
-            loop = False
+            break
     return protocols
 
 
@@ -35,11 +34,11 @@ def present_protocols(out_packet):
     while loop:
         out = out.upper_layer()
         if out is not None:
-            if hasattr(out, "identifier"):
-                protocols.append(out.identifier)
+            if hasattr(out, "Identifier"):
+                protocols.append(out.Identifier)
             else:
                 loop = False
-                raise ValueError(f"{out} has not identifier attribute")
+                raise ValueError(f"{out} has no identifier attribute")
         else:
             loop = False
     return protocols
