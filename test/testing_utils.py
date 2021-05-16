@@ -6,7 +6,7 @@ import asyncio
 import pytest
 import aiofiles
 import sys
-import itertools
+import time
 sys.path.insert(0, "./")
 
 from network_monitor.filters import get_protocol, present_protocols  # noqa
@@ -24,6 +24,29 @@ async def load_submitter_local_log(filename):
     async with aiofiles.open(filename, "r") as fin:
         async for line in fin:
             yield json.loads(line)
+
+
+def interface_listener_simulate(filename: str, queue: asyncio.Queue):
+    i = 0
+    with open(filename, "r") as fin:
+        while True:
+            af_packet = fin.readline()
+            if len(af_packet) == 0:
+                break
+
+            raw_bytes = fin.readline()
+
+            af_packet = json.loads(af_packet)
+            raw_bytes = base64.b64decode(raw_bytes)
+
+           # yield af_packet, packet
+            cap_time = time.time()
+
+            queue.put_nowait((cap_time, (af_packet, raw_bytes)))
+            # i += 1
+            # if i == 10:
+            #     break
+    #assert False
 
 
 async def load_raw_listener_service_output(filename: str):
@@ -73,7 +96,7 @@ async def generate_packet_parser_comparison_values(filename: str):
 
             await fout.write(",".join(str(i) for i in res) + "\n")
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    asyncio.run(generate_packet_parser_comparison_values(
-        "test/test_cases/raw_interface_service_capture/raw_sample.lp"))
+#     asyncio.run(generate_packet_parser_comparison_values(
+#         "test/test_cases/raw_interface_service_capture/raw_sample.lp"))

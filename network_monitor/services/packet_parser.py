@@ -142,6 +142,9 @@ class Packet_Filter(object):
         # add originating information
         _p["AF_Packet"] = af_packet.serialize()
 
+        if not self.__filters:
+            return _p
+
         res: List[bool] = []
         for filter_ in self.__filters:
             res.append(filter_.apply(_p))
@@ -159,7 +162,7 @@ class Packet_Parser(object):
         self,
         raw_data_queue: Queue,
         processed_queue: Queue,
-        packet_filter: Packet_Filter,
+        packet_filter: Optional[Packet_Filter] = None,
     ) -> None:
 
         self.raw_data_queue = raw_data_queue
@@ -170,7 +173,7 @@ class Packet_Parser(object):
         else:
             self.packet_filter = packet_filter
 
-    async def worker(self, logger: Logger) -> None:
+    async def worker(self, logger: Optional[Logger]) -> None:
 
         while True:
 
@@ -221,4 +224,5 @@ class Packet_Parser(object):
                 # check that raw queue empty
                 raise e
             except Exception as e:
-                await logger.exception(f"other exception in packer_parser: {e}")
+                if logger is not None:
+                    await logger.exception(f"other exception in packer_parser: {e}")

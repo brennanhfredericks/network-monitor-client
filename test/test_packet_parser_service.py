@@ -1,5 +1,5 @@
 
-from testing_utils import load_raw_listener_service_output, load_packet_parser_comparison_values
+from testing_utils import load_raw_listener_service_output, load_packet_parser_comparison_values, interface_listener_simulate
 from aiologger import Logger, levels
 from logging import Formatter
 import os
@@ -19,13 +19,7 @@ from network_monitor.protocols import (  # noqa
 )
 
 # create logger for testing
-logger = Logger.with_default_handlers(
-    name='single-interface',
-    level=levels.LogLevel.FATAL,
-    formatter=Formatter("%(asctime)s %(message)s")
-)
-raw_queue = asyncio.Queue()
-processed_queue = asyncio.Queue()
+
 
 # load data from file
 # to iterate and async generator, you need adn async for loop
@@ -33,9 +27,13 @@ processed_queue = asyncio.Queue()
 
 async def parsing_raw_data(filename: str, filename_present_protocols: str):
 
-    # async for p_protos, (af_address, raw_bytes) in itertools.zip_longest(
-    #         load_raw_listener_service_ouput(filename),
-    #         load_packet_parser_comparison_values(filename_present_protocols)):
+    logger = Logger.with_default_handlers(
+        name='single-interface',
+        level=levels.LogLevel.FATAL,
+        formatter=Formatter("%(asctime)s %(message)s")
+    )
+    raw_queue = asyncio.Queue()
+    processed_queue = asyncio.Queue()
 
     lrlso = load_raw_listener_service_output(filename)
     lppcv = load_packet_parser_comparison_values(filename_present_protocols)
@@ -62,7 +60,7 @@ async def parsing_raw_data(filename: str, filename_present_protocols: str):
             assert res == comparison
 
 
-@pytest.mark.parametrize(
+@ pytest.mark.parametrize(
     ("filename", "filename_present_protocols"),
     (
         ("test/test_cases/raw_interface_service_capture/raw_sample.lp",
@@ -71,23 +69,38 @@ async def parsing_raw_data(filename: str, filename_present_protocols: str):
          "test/test_cases/raw_interface_service_capture/raw_sample_present_protocols.lp")
     )
 )
-def test_parsing_raw_data(filename: str, filename_present_protocols: str):
-
-    asyncio.run(parsing_raw_data(filename, filename_present_protocols))
+@pytest.mark.asyncio
+async def test_parsing_raw_data(filename: str, filename_present_protocols: str):
+    await parsing_raw_data(filename, filename_present_protocols)
 
 
 async def packet_parser_service_no_filter(filename: str):
-    packer_parser: Packet_Parser = Packet_Parser(
+
+    raw_queue = asyncio.Queue()
+    processed_queue = asyncio.Queue()
+    interface_listener_simulate(filename, raw_queue)
+    # print(raw_queue.qsize())
+    packet_parser: Packet_Parser = Packet_Parser(
         raw_queue, processed_queue, None)
 
+    packet_parser_service_task: asyncio.Task = asyncio.create_task(
+        packet_parser.worker(None), name="packet-parser-service-task")
 
-@pytest.mark.parametrize(
+    await asyncio.sleep(0.001)
+    # await raw_queue.join()
+    # print(raw_queue.qsize())
+    packet_parser_service_task.cancel()
+
+    await asyncio.gather(packet_parser_service_task, return_exceptions=True)
+
+
+@ pytest.mark.asyncio
+@ pytest.mark.parametrize(
     ("filename"),
     (
-        ("test/test_cases/raw_interface_service_capture/raw_sample.lp"),
-        ("test/test_cases/raw_interface_service_capture/raw_sample_dup.lp")
+        "test/test_cases/raw_interface_service_capture/raw_sample.lp",
+
     )
 )
-def test_packet_parser_service_no_filter(filename: str):
-
-    asyncio.run(packet_parser_service_no_filter(filename))
+async def test_packet_parser_service_no_filter(filename: str):
+    await packet_parser_service_no_filter(filename)
