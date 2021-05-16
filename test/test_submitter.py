@@ -1,23 +1,22 @@
+
+#from testing_utils import load_filev2
+
+import json
+import time
+import os
+import binascii
+import threading
+import queue
 import sys
 
 sys.path.insert(0, "./")
-
-import queue
-import threading
-import binascii
-import os
-import time
-import json
-
-from network_monitor.protocols import (
+from network_monitor.filters import present_protocols  # noqa
+from network_monitor import Packet_Submitter, Packet_Filter, Filter  # noqa
+from network_monitor.protocols import (  # noqa
     Packet_802_2,
     Packet_802_3,
     AF_Packet,
 )
-from network_monitor import Packet_Submitter, Packet_Filter, Filter
-from network_monitor.filters import present_protocols
-from test_load_data import load_filev2
-
 url = "http://127.0.0.1:5000/packets"
 local = "./logs/submitter_service/"
 retryinterval = 300
@@ -72,5 +71,5 @@ def start_submitter():
 
 def test_submitter_useless():
 
-    #start_submitter()
+    # start_submitter()
     ...

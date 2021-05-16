@@ -48,6 +48,8 @@ def test_listen_on_single_interface():
     """
     asyncio.run(listen_on_single_interface("eth0"))
 
+# @pytest.mark.xfail(raises=OSError)
+
 
 async def listen_on_single_invalid_interface(interface_name: str):
     # configure listerner service
