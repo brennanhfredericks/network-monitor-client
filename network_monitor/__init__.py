@@ -19,6 +19,9 @@ from .services import (
     Packet_Submitter,
     Packet_Filter,
     Filter,
+    Service_Type,
+    Service_Identifier,
+    Data_Queue_Identifier
 )
 
 from logging import Formatter
@@ -32,8 +35,13 @@ async def start_services(app_config: Optional[DevConfig], services_manager: Serv
     # use config to setup everything
     # interface listener service add raw binary data to queue
     raw_queue: asyncio.Queue = asyncio.Queue()
+
+    services_manager.add_queue(raw_queue, Data_Queue_Identifier.Raw_Data)
     # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
     processed_queue: asyncio.Queue = asyncio.Queue()
+
+    services_manager.add_queue(
+        processed_queue, Data_Queue_Identifier.Processed_Data)
 
     # setup logger
     # gbl_format = Formatter(
@@ -51,7 +59,7 @@ async def start_services(app_config: Optional[DevConfig], services_manager: Serv
         listener_service.worker(logger), name="listener-service-task")
 
     services_manager.add_service(
-        "interface_listener", listener_service_task)
+        Service_Type.Producer, Service_Identifier.Interface_Listener_Service, listener_service_task)
 
     # configure packet parser
     packet_filter: Packet_Filter = Packet_Filter(
@@ -64,8 +72,9 @@ async def start_services(app_config: Optional[DevConfig], services_manager: Serv
     packet_parser_service_task: Task = asyncio.create_task(
         packer_parser.worker(logger), name="packet-parser-service-task")
 
+    # produces and consumes data
     services_manager.add_service(
-        "packet_parser", packet_parser_service_task)
+        Service_Type.Consumer, Service_Identifier.Packet_Parser_Service, packet_parser_service_task)
 
     # configure submitter service
     packet_submitter: Packet_Submitter = Packet_Submitter(
@@ -74,8 +83,12 @@ async def start_services(app_config: Optional[DevConfig], services_manager: Serv
         app_config.local_metadata_storage_path(),
         app_config.ResubmissionInterval
     )
+
     packet_submitter_service_task: Task = asyncio.create_task(
         packet_submitter.worker(logger))
+
+    services_manager.add_service(
+        Service_Type.Consumer, Service_Identifier.Packet_Submitter_Service, packet_submitter_service_task)
 
 
 async def a_main(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
@@ -101,22 +114,13 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
 
     await start_services(app_config, services_manager, asynchronous_task_list)
 
-    await asyncio.sleep(10)
+    await asyncio.sleep(5)
 
-    listener_service_task.cancel()
+    # block until signal shutdown
 
-    # wait for raw queue to finish processing
-    await raw_queue.join()
-    await processed_queue.join()
-
-    packet_parser_service_task.cancel()
-    packet_submitter_service_task.cancel()
-
-    #listener_service_task, packet_submitter_service_task, packet_parser_service_task,
+    await services_manager.stop_all_services()
 
     await asyncio.gather(*asynchronous_task_list, return_exceptions=True)
-
-    # print("stopped all")
 
 
 async def startup_manager(args) -> None:
