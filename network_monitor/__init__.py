@@ -1,11 +1,10 @@
 import argparse
 import netifaces
 import sys
-import queue
+
 import signal
 import time
 import os
-import re
 import asyncio
 
 
@@ -114,12 +113,21 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
 
     await start_services(app_config, services_manager, asynchronous_task_list)
 
-    await asyncio.sleep(5)
+    loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+    EXIT_PROGRAM: bool = False
+
+    def signal_handler(*args):
+        nonlocal EXIT_PROGRAM
+        EXIT_PROGRAM = True
+
+    signal.signal(signal.SIGTSTP, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
 
     # block until signal shutdown
+    while not EXIT_PROGRAM:
+        await asyncio.sleep(0.001)
 
     await services_manager.stop_all_services()
-
     await asyncio.gather(*asynchronous_task_list, return_exceptions=True)
 
 
