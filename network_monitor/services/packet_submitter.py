@@ -59,6 +59,9 @@ class Submitter(object):
         self.max_buffer_size: int = max_buffer_size
         self.__buffer: Dict[str, Dict[str, Union[str, int]]] = []
 
+    def output_filename(self) -> str:
+        return self.out_file
+
     async def set_logger(self, logger: Optional[Logger] = None) -> None:
         self.logger: Logger = logger
 
@@ -174,6 +177,9 @@ class Packet_Submitter(object):
         self._submitter: Submitter(url, log_dir) = Submitter(
             url, log_dir, retryinterval=retryinterval)
 
+    def get_output_filename(self) -> str:
+        return self._submitter.output_filename()
+
     async def worker(self, logger: Optional[Logger] = None):
         await self._submitter.set_logger(logger)
         while True:
@@ -187,7 +193,7 @@ class Packet_Submitter(object):
                 self.processed_data_queue.task_done()
 
             except CancelledError as e:
-                await asyncio.gather(*self._submitter._tasks, return_exceptions=True)
+                await asyncio.gather(*self._submitter._tasks, return_exceptions=False)
                 print("packet submitter service cancelled", e)
                 raise e
             except Exception as e:
