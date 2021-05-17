@@ -117,6 +117,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     EXIT_PROGRAM: bool = False
 
     def signal_handler(*args):
+        # use parent scope variable
         nonlocal EXIT_PROGRAM
         EXIT_PROGRAM = True
 

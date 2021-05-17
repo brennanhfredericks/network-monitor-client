@@ -4,7 +4,7 @@
 
 ## description
 
-  A python 3 application to parse network frames received by a wired network interface controller operating in promiscuous mode.
+  An asynchronous python 3 application to parse network frames received by a wired network interface controller operating in promiscuous mode.
 
   The application consist of the following services:
   - interface listener
@@ -66,19 +66,12 @@
 
 ### todo:
 
-#### Known issues:
-  - Interuption on async function not exiting cleanly
-  - 
 
 #### high priority
-
   - Implement flag to filter all traffic generate by application from being send to network monitor server
-  - Implement logging functionality
-  - Service init can raise exception, handle case 
-  - Add type hints and annotations and start using `mypy`
+
 
 #### medium priority
-  - Capture all output to stdout and errors to stderr
   - Implement flag to verbose output of application, remove print functions and replace with stdout and stderr pipes
   
 #### low priority
@@ -114,4 +107,8 @@
   - 802.2 LLC PDU
   	- 170: SNAP Extension Used
 	   
+### changes
 
+#### 2021/05/17
+- changed application from threaded to asynchronous
+- added asynchronous logger, only logs to stderr and stdout
