@@ -114,6 +114,9 @@ class Packet_802_2(object):
         )
 
 
+Protocol_Parser._register_protocol_class_name("Packet_802_2", Packet_802_2)
+
+
 @dataclass
 class Packet_802_3(object):
     Description = "Ethernet 802.3 Packet"

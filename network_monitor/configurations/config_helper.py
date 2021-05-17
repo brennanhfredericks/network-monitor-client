@@ -36,7 +36,7 @@ def load_config_from_file(configuration_path: str) -> BaseConfig:
     url: str = config.get(
         "SubmitterService", "Url",
     )
-    app_config.RemoteMetadataStorage: str = url
+    app_config.RemoteMetadataStorage = url
 
     # timeout for resubmission of logged data
     retryinterval: int = config.get(
@@ -92,11 +92,11 @@ def generate_configuration_template(config_name: str):
 
 # configure filter settings
 [Filter]
-# Definition = {"AF_Packet":{"ifname":"lo"},"TCP":{}}
+# Definition = {"AF_Packet":{"Interface_Name":"lo"}}
 
 # additional config string
 [Filter1]
-# Definition ={"Filter": {"AF_Packet": {"ifname": "lo"},"IPv4": {"destination_address": "127.0.0.01"},"TCP": {"destination_port": 5000}}
+# Definition ={"Filter": {"AF_Packet": {"Interface_Name": "lo"},"IPv4": {"Destination_Address": "127.0.0.01"},"TCP": {"destination_port": 5000}}
     """
 
     with open(os.path.join("./", f"{config_name}"), "w") as fout:
