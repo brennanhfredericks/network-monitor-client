@@ -28,28 +28,12 @@ from .protocols import Protocol_Parser
 from .configurations import generate_configuration_template, DevConfig, load_config_from_file
 
 
-async def a_main(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
-
-    # load default configuration and override with user values, if any
-    app_config: Optional[DevConfig] = None
-
-    # the user can either specify interface or configuration_file
-    if interface_name is not None:
-        app_config = DevConfig()
-        app_config.InterfaceName = interface_name
-    elif configuration_file is not None:
-        # load file and read data. Override default values with new value
-        app_config = load_config_from_file(configuration_file)
-
+async def start_services(app_config: Optional[DevConfig], services_manager: Service_Manager, asynchronous_task_list: List[Task], ):
     # use config to setup everything
-
     # interface listener service add raw binary data to queue
     raw_queue: asyncio.Queue = asyncio.Queue()
     # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
     processed_queue: asyncio.Queue = asyncio.Queue()
-
-    # other task list, used to inject asynchruous functionality for blocking code
-    global_task_list: List[Task] = []
 
     # setup logger
     # gbl_format = Formatter(
@@ -57,10 +41,7 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     logger = Logger.with_default_handlers()
 
     # configure logger and output directory Protocol Parser
-    await Protocol_Parser.init_asynchronous_operation(app_config.undefined_storage_path(), logger, global_task_list)
-
-    # holds all coroutine services
-    services_manager: Service_Manager = Service_Manager()
+    await Protocol_Parser.init_asynchronous_operation(app_config.undefined_storage_path(), logger, asynchronous_task_list)
 
     # configure and listerner service
     listener_service: Interface_Listener = Interface_Listener(
@@ -95,9 +76,32 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     )
     packet_submitter_service_task: Task = asyncio.create_task(
         packet_submitter.worker(logger))
+
+
+async def a_main(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
+
+    # load default configuration and override with user values, if any
+    app_config: Optional[DevConfig] = None
+
+    # the user can either specify interface or configuration_file
+    if interface_name is not None:
+        app_config = DevConfig()
+        app_config.InterfaceName = interface_name
+    elif configuration_file is not None:
+        # load file and read data. Override default values with new value
+        app_config = load_config_from_file(configuration_file)
+
+    # other task list, used to inject asynchruous functionality for blocking code
+    asynchronous_task_list: List[Task] = []
+
+    # holds all coroutine services
+    services_manager: Service_Manager = Service_Manager()
+
     # test only
 
-    await asyncio.sleep(600)
+    await start_services(app_config, services_manager, asynchronous_task_list)
+
+    await asyncio.sleep(10)
 
     listener_service_task.cancel()
 
@@ -108,7 +112,9 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
     packet_parser_service_task.cancel()
     packet_submitter_service_task.cancel()
 
-    await asyncio.gather(listener_service_task, packet_submitter_service_task, packet_parser_service_task, *global_task_list, return_exceptions=True)
+    #listener_service_task, packet_submitter_service_task, packet_parser_service_task,
+
+    await asyncio.gather(*asynchronous_task_list, return_exceptions=True)
 
     # print("stopped all")
 
@@ -133,7 +139,7 @@ async def startup_manager(args) -> None:
                 a_main(interface_name=args.interface), name="using_interfacename")
 
         # block until done
-        await start_method
+        await asyncio.gather(start_method, return_exceptions=False)
 
     else:
 
