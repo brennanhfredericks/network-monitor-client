@@ -59,7 +59,7 @@ class Submitter(object):
         self.max_buffer_size: int = max_buffer_size
         self.__buffer: Dict[str, Dict[str, Union[str, int]]] = []
 
-    async def set_logger(self, logger: Logger) -> None:
+    async def set_logger(self, logger: Optional[Logger] = None) -> None:
         self.logger: Logger = logger
 
     async def _post_to_server(self, data, session: ClientSession) -> None:
@@ -104,9 +104,12 @@ class Submitter(object):
                         aiohttp.ClientError,
                         aiohttp.http_exceptions.HttpProcessingError,
                     ) as e:
-                        await self.logger.warning(f"remote storage not available: {e}")
+                        if self.logger is not None:
+                            self.logger.warning(
+                                f"remote storage not available: {e}")
                     except Exception as e:
-                        await self.logger.exception(f"exception when trying to clear logs: {e}")
+                        if self.logger is not None:
+                            await self.logger.exception(f"exception when trying to clear logs: {e}")
                     else:
                         # only run when no exception occurs
                         await aiofiles.os.remove(infile)
@@ -119,7 +122,8 @@ class Submitter(object):
             # await self.logger.warning(f"something wrong with remote storage: {e}")
             await self._local_storage(data, fout)
         except Exception as e:
-            await self.logger.exception(f"exception when trying to switch between post_or_disk: {e}")
+            if self.logger is not None:
+                await self.logger.exception(f"exception when trying to switch between post_or_disk: {e}")
 
     async def _process(self) -> None:
         tasks: List[Task] = []
@@ -170,7 +174,7 @@ class Packet_Submitter(object):
         self._submitter: Submitter(url, log_dir) = Submitter(
             url, log_dir, retryinterval=retryinterval)
 
-    async def worker(self, logger: Logger):
+    async def worker(self, logger: Optional[Logger] = None):
         await self._submitter.set_logger(logger)
         while True:
             try:
@@ -183,8 +187,9 @@ class Packet_Submitter(object):
                 self.processed_data_queue.task_done()
 
             except CancelledError as e:
-                await asyncio.gather(*self._submitter._tasks, return_exception=True)
+                await asyncio.gather(*self._submitter._tasks, return_exceptions=True)
                 print("packet submitter service cancelled", e)
                 raise e
             except Exception as e:
-                await logger.exception(f"submitter_exception: {e}")
+                if logger is not None:
+                    await logger.exception(f"submitter_exception: {e}")

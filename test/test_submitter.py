@@ -1,75 +1,48 @@
 
-#from testing_utils import load_filev2
+from testing_utils import load_submitter_local_log
 
 import json
 import time
 import os
-import binascii
-import threading
-import queue
-import sys
 
+import asyncio
+import sys
+import pytest
+from aiologger import Logger
 sys.path.insert(0, "./")
 from network_monitor.filters import present_protocols  # noqa
-from network_monitor import Packet_Submitter, Packet_Filter, Filter  # noqa
-from network_monitor.protocols import (  # noqa
-    Packet_802_2,
-    Packet_802_3,
-    AF_Packet,
-)
-url = "http://127.0.0.1:5000/packets"
-local = "./logs/submitter_service/"
-retryinterval = 300
+from network_monitor import Packet_Submitter  # noqa
 
 
-def submitter_logged_file():
-    # feeder = queue.Queue()
-    ...
-
-
-def test_submitter_logger():
-
-    submitter_logged_file()
-
-
-def start_submitter():
-
-    feeder = queue.Queue()
-
-    t0_filter = Filter(
-        "test0",
-        {"AF_Packet": {"Interface_Name": "lo"}},
+async def consuming(filename: str):
+    processed_queue = asyncio.Queue()
+    packet_submitter: Packet_Submitter = Packet_Submitter(
+        processed_queue,
+        "http://localhost:5000/packets/",
+        "./test/test_cases/local_submitter_out",
+        5
     )
-    packet_filter = Packet_Filter()
-    packet_filter.register(t0_filter)
 
-    packet_submitter = Packet_Submitter(feeder, url, local, retryinterval)
+    packet_submitter_service_task: asyncio.ask = asyncio.create_task(
+        packet_submitter.worker(None))
 
-    packet_submitter.start()
-    for i, (af_packet, raw_packet) in enumerate(
-        load_filev2(
-            "raw2_protocols_1617213286_IPv4_IPv6_UDP_TCP_ARP_ICMP_ICMPv6_IGMP_LLDP_CDP.lp",
-            log_dir="./test/remote_data",
-        )
-    ):
+    async for f in load_submitter_local_log(filename):
+        t = time.time()
+        await processed_queue.put((t, f))
 
-        if af_packet["protocol"] > 1500:
-            out = Packet_802_3(raw_packet)
-        else:
-            out = Packet_802_2(raw_packet)
-
-        res = packet_filter.apply(af_packet, out)
-
-        if res is None:
-            continue
-        else:
-            feeder.put(res)
-
-    packet_submitter.stop()
-    assert True
+    await asyncio.sleep(1)
+    packet_submitter_service_task.cancel()
+    await asyncio.gather(packet_submitter_service_task, return_exceptions=True)
+    assert processed_queue.qsize() == 0
 
 
-def test_submitter_useless():
+@ pytest.mark.asyncio
+@ pytest.mark.parametrize(
+    ('filename'),
+    (
+        'test/test_cases/packet_parser_service/packet_parser_output_sample.lsp',
+    )
+)
+async def test_consuming(filename: str):
 
-    # start_submitter()
-    ...
+    await consuming(filename)
