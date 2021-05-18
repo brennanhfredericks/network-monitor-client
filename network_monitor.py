@@ -1,8 +1,22 @@
 import netifaces
 import argparse
+import asyncio
+import os
+
+from asyncio import Task
 from network_monitor import generate_configuration_template
+from typing import Optional, Dict
+
 
 # configure start up manager
+async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
+
+    # get main asyncio loop
+    main_loop = asyncio.get_running_loop()
+
+    await main_loop.create_task(asyncio.sleep(5))
+
+    main_loop.stop()
 
 
 def main(args: argparse.Namespace) -> int:
@@ -19,6 +33,41 @@ def main(args: argparse.Namespace) -> int:
     if args.generate_config_file:
         generate_configuration_template(args.generate_config_file)
         print(f"created configuration file: {args.generate_config_file}")
+
+    # start application
+    if args.interface or args.load_config_file:
+        # app initiate method
+
+        try:
+            loop = asyncio.get_event_loop()
+        except Exception as e:
+            print(f"An error occurred when trying to start application: {e}")
+        else:
+            #init_method: Optional[asyncio.Task] = None
+            if args.load_config_file:
+                if not os.path.exists(args.load_config_file):
+                    print(f"{args.load_config_file} does not exists")
+                    # exit failure
+                    return 1
+
+                # init_method from configuration file load
+                loop.create_task(
+                    start_app(configuration_file=args.load_config_file)
+                )
+
+            elif args.interface:
+                # start on specified interface
+                loop.create_task(
+                    start_app(interface_name=args.interface)
+                )
+
+            # run until loop.stop() is call
+            loop.run_forever()
+        finally:
+            loop.close()
+            print("application closed")
+    # exit_succes
+    return 0
 
 
 def args_parser() -> int:
