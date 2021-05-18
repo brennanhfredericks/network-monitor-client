@@ -2,19 +2,71 @@ import netifaces
 import argparse
 import asyncio
 import os
-
+import signal
+import functools
 from asyncio import Task
-from network_monitor import generate_configuration_template
+from network_monitor import generate_configuration_template, load_config_from_file
+from network_monitor.configurations import DevConfig
 from typing import Optional, Dict
 
+# execute in its own thread
 
+
+async def async_aware_ops():
+    ...
 # configure start up manager
+
+# execute in its own_thread
+
+
+async def async_ops():
+    ...
+
+
 async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
 
     # get main asyncio loop
     main_loop = asyncio.get_running_loop()
 
-    await main_loop.create_task(asyncio.sleep(5))
+    # parse configuration
+    # load default configuration and override with user values, if any
+    app_config: Optional[DevConfig] = None
+
+    # the user can either specify interface or configuration_file
+    if interface_name is not None:
+        app_config = DevConfig()
+        app_config.InterfaceName = interface_name
+    elif configuration_file is not None:
+        # load file and read data. Override default values with new value
+        app_config = load_config_from_file(configuration_file)
+
+    # # other task list, used to inject asynchruous functionality for blocking code
+    # asynchronous_task_list: List[Task] = []
+
+    # # holds all coroutine services
+    # services_manager: Service_Manager = Service_Manager()
+
+    # main loop blocking part
+    EXIT_PROGRAM: bool = False
+
+    def signal_handler(*args):
+        # use parent scope variable
+        nonlocal EXIT_PROGRAM
+        print("application starting exist process")
+        EXIT_PROGRAM = True
+
+    main_loop.add_signal_handler(
+        signal.SIGTSTP, functools.partial(signal_handler))
+    main_loop.add_signal_handler(
+        signal.SIGINT, functools.partial(signal_handler))
+
+    # block until signal shutdown
+    while not EXIT_PROGRAM:
+        # await services_manager.status()
+        print("main loop - output")
+        await asyncio.sleep(1)
+    #
+    # await main_loop.create_task(asyncio.sleep(5))
 
     main_loop.stop()
 
