@@ -68,8 +68,11 @@
 
 
 #### high priority
-  - Implement flag to filter all traffic generate by application from being send to network monitor server
+  - Application terminated by Kernel, out of memory
 
+
+  
+  - Implement flag to filter all traffic generate by application from being send to network monitor server
 
 #### medium priority
   - Implement flag to verbose output of application, remove print functions and replace with stdout and stderr pipes

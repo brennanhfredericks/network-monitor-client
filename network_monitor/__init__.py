@@ -126,7 +126,8 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
 
     # block until signal shutdown
     while not EXIT_PROGRAM:
-        await asyncio.sleep(0.001)
+        await services_manager.status()
+        await asyncio.sleep(30)
 
     await services_manager.stop_all_services()
     await asyncio.gather(*asynchronous_task_list, return_exceptions=True)

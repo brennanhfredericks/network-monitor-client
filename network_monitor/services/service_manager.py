@@ -34,7 +34,12 @@ class Service_Manager(object):
                                  Service_Type.Producer: OrderedDict(),
                                  Service_Type.Consumer: OrderedDict()}
         self._data_queues: Dict[Data_Queue_Identifier, Queue] = OrderedDict()
+        self.logger = Logger.with_default_handlers(name="service-manager")
         # add formatter
+
+    async def status(self):
+        for k, v in self._data_queues.items():
+            await self.logger.info(f"Queue: {k} Size: {v.qsize()}")
 
     def add_queue(self, queue: Queue, queue_identifier: Data_Queue_Identifier):
         self._data_queues[queue_identifier] = queue
@@ -48,21 +53,20 @@ class Service_Manager(object):
         raise NotImplemented
 
     async def stop_all_services(self) -> None:
-        logger = Logger.with_default_handlers(name="service-manager")
 
         # stop all service that produces data
         for k, v in self._services[Service_Type.Producer].items():
             v.cancel()
-            await logger.info(f"Requested {k} service to stop")
+            await self.logger.info(f"Requested {k} service to stop")
 
         # wait for all queue to be cleared by the consumer services
         for k, v in self._data_queues.items():
             await v.join()
-            await logger.info(f"Wait queue {k} to clear")
+            await self.logger.info(f"Wait queue {k} to clear")
 
         # stop all service that consume data
         for k, v in self._services[Service_Type.Consumer].items():
             v.cancel()
-            await logger.info(f"Requested {k} service to stop")
+            await self.logger.info(f"Requested {k} service to stop")
 
-        await logger.info("All services stopped")
+        await self.logger.info("All services stopped")
