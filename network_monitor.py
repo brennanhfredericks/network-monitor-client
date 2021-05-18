@@ -4,19 +4,54 @@ import asyncio
 import os
 import signal
 import functools
+import concurrent.futures
 from asyncio import Task
-from network_monitor import generate_configuration_template, load_config_from_file
+from network_monitor import (
+    generate_configuration_template,
+    load_config_from_file,
+    Service_Manager,
+    Data_Queue_Identifier,
+    Interface_Listener,
+    Service_Type,
+    Service_Identifier,
+)
 from network_monitor.configurations import DevConfig
-from typing import Optional, Dict
+from logging import Formatter
+from aiologger import Logger
+from typing import Optional, Dict, Callable, Awaitable
 
 # execute in its own thread
 
+# calling async aware function, however still blocking
 
-async def async_aware_ops():
-    ...
-# configure start up manager
 
-# execute in its own_thread
+async def blocking_socket(interface_name: str,
+                          register_queue: Callable[[asyncio.Queue, Data_Queue_Identifier], None],
+                          register_service: Callable[[Service_Type, Service_Identifier, asyncio.Task], None]):
+    blocking_loop = asyncio.new_event_loop()
+    out_format = Formatter(
+        "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
+    )
+    queue: asyncio.Queue = asyncio.Queue()
+    logger = Logger.with_default_handlers(
+        name="interface_blocking_thread", formatter=out_format)
+
+    # configure and listerner service
+    listener_service: Interface_Listener = Interface_Listener(
+        interface_name,
+        queue
+    )
+
+    listener_service_task: Task = blocking_loop.create_task(
+        listener_service.worker(logger),
+        name="listener-service-task"
+    )
+
+    register_queue(queue, Data_Queue_Identifier)
+    register_service(Service_Type.Producer,
+                     Service_Identifier.Interface_Listener_Service, listener_service_task)
+
+    await asyncio.gather(listener_service_task, return_exceptions=True)
 
 
 async def async_ops():
@@ -26,7 +61,7 @@ async def async_ops():
 async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
 
     # get main asyncio loop
-    main_loop = asyncio.get_running_loop()
+    main_loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
 
     # parse configuration
     # load default configuration and override with user values, if any
@@ -44,7 +79,7 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     # asynchronous_task_list: List[Task] = []
 
     # # holds all coroutine services
-    # services_manager: Service_Manager = Service_Manager()
+    services_manager: Service_Manager = Service_Manager()
 
     # main loop blocking part
     EXIT_PROGRAM: bool = False
@@ -53,6 +88,7 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
         # use parent scope variable
         nonlocal EXIT_PROGRAM
         print("application starting exist process")
+        # change end blocking loop
         EXIT_PROGRAM = True
 
     main_loop.add_signal_handler(
@@ -60,20 +96,33 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     main_loop.add_signal_handler(
         signal.SIGINT, functools.partial(signal_handler))
 
+    # await main_loop.create_task(asyncio.sleep(5))
+
+    executer: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor(
+        max_workers=2)
+    blocking_socket_future = main_loop.run_in_executor(
+        executer,
+        blocking_socket,
+        app_config.InterfaceName,
+        services_manager.add_queue,
+        services_manager.add_service
+    )
+
     # block until signal shutdown
     while not EXIT_PROGRAM:
         # await services_manager.status()
         print("main loop - output")
-        await asyncio.sleep(1)
+        await asyncio.sleep(5)
     #
-    # await main_loop.create_task(asyncio.sleep(5))
+    await services_manager.stop_all_services()
 
+    # stop main loop
     main_loop.stop()
 
 
 def main(args: argparse.Namespace) -> int:
 
-    # first do info args with with starting application
+    # first do info args before starting application
     if args.list_gateways:
         print("gateways: ")
         for k, v in netifaces.gateways().items():
@@ -94,6 +143,7 @@ def main(args: argparse.Namespace) -> int:
             loop = asyncio.get_event_loop()
         except Exception as e:
             print(f"An error occurred when trying to start application: {e}")
+            return 1
         else:
             #init_method: Optional[asyncio.Task] = None
             if args.load_config_file:

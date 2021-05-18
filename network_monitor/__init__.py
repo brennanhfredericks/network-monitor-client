@@ -3,7 +3,7 @@ import netifaces
 import sys
 
 import signal
-import time
+
 import os
 import asyncio
 
@@ -33,9 +33,7 @@ from .configurations import generate_configuration_template, DevConfig, load_con
 async def start_services(app_config: Optional[DevConfig], services_manager: Service_Manager, asynchronous_task_list: List[Task], ):
     # use config to setup everything
     # interface listener service add raw binary data to queue
-    raw_queue: asyncio.Queue = asyncio.Queue()
 
-    services_manager.add_queue(raw_queue, Data_Queue_Identifier.Raw_Data)
     # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
     processed_queue: asyncio.Queue = asyncio.Queue()
 
@@ -49,16 +47,6 @@ async def start_services(app_config: Optional[DevConfig], services_manager: Serv
 
     # configure logger and output directory Protocol Parser
     await Protocol_Parser.init_asynchronous_operation(app_config.undefined_storage_path(), logger, asynchronous_task_list)
-
-    # configure and listerner service
-    listener_service: Interface_Listener = Interface_Listener(
-        app_config.InterfaceName, raw_queue)
-
-    listener_service_task: Task = asyncio.create_task(
-        listener_service.worker(logger), name="listener-service-task")
-
-    services_manager.add_service(
-        Service_Type.Producer, Service_Identifier.Interface_Listener_Service, listener_service_task)
 
     # configure packet parser
     packet_filter: Packet_Filter = Packet_Filter(
@@ -131,87 +119,3 @@ async def a_main(interface_name: Optional[str] = None, configuration_file: Optio
 
     await services_manager.stop_all_services()
     await asyncio.gather(*asynchronous_task_list, return_exceptions=True)
-
-
-async def startup_manager(args) -> None:
-
-    if args.interface or args.load_config_file:
-
-        start_method: Optional[asyncio.Task] = None
-        if args.load_config_file:
-            if not os.path.exists(args.load_config_file):
-                print(f"{args.load_config_file} does not exists")
-                sys.exit(1)
-
-            # start from configuration file load
-            start_method = asyncio.create_task(a_main(
-                configuration_file=args.load_config_file), name="using_configuration_file")
-
-        elif args.interface:
-            # start on specified interface
-            start_method = asyncio.create_task(
-                a_main(interface_name=args.interface), name="using_interfacename")
-
-        # block until done
-        await asyncio.gather(start_method, return_exceptions=False)
-
-    else:
-
-        if args.list_gateways:
-            print("gateways: ")
-            for k, v in netifaces.gateways().items():
-                print(f"\taddress family: {k}, interface: {v}")
-
-        if args.list_interfaces:
-            print(f"interfaces: {netifaces.interfaces()}")
-
-        if args.generate_config_file:
-            generate_configuration_template(args.generate_config_file)
-            print("created configuration file")
-
-
-def args_parser() -> None:
-
-    basic_parser = argparse.ArgumentParser(
-        description="monitor ethernet network packets.", add_help=True
-    )
-
-    # add arguments
-    basic_parser.add_argument(
-        "-i",
-        "--interface",
-        action="store",
-        choices=netifaces.interfaces(),
-        type=str,
-        help="specify which interface to monitor",
-    )
-    basic_parser.add_argument(
-        "-li",
-        "--list-interfaces",
-        action="store_true",
-        help="list all available interfaces",
-    )
-    basic_parser.add_argument(
-        "-lg",
-        "--list-gateways",
-        action="store_true",
-        help="list all available gateways",
-    )
-    basic_parser.add_argument(
-        "-gcf",
-        "--generate-config-file",
-        action="store",
-        type=str,
-        help="generate a configuration template file",
-    )
-    basic_parser.add_argument(
-        "-lcf",
-        "--load-config-file",
-        action="store",
-        type=str,
-        help="load a configuration file",
-    )
-
-    # parse arguments
-    args = basic_parser.parse_args()
-    asyncio.run(startup_manager(args), debug=False)
