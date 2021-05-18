@@ -68,10 +68,9 @@
 
 
 #### high priority
-  - Application terminated by Kernel, out of memory
-
-
-  
+  - Application terminated by Kernel, out of memory due to queue not being cleared.
+    - []  rewrite startup code to use two threads. interface_listener_service blocking. (how to create asycio low level socket connection?)
+    - [] move from init to network.py 
   - Implement flag to filter all traffic generate by application from being send to network monitor server
 
 #### medium priority
