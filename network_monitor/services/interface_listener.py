@@ -9,6 +9,8 @@ from socket import socket, AF_PACKET, SOCK_RAW, htons
 from asyncio import Queue, CancelledError
 from aiologger import Logger
 from typing import Optional, List, Dict, Any, Tuple
+from .service_manager import Thread_Control
+
 # used to manipulate file descriptor for unix
 
 
@@ -109,27 +111,21 @@ class Interface_Listener(object):
         return interface.recvfrom(self.BUFFER_SIZE)
 
     # if operation is not suspended or waiting it will pegg processor
-    async def worker(self, logger: Logger) -> None:
+    async def worker(self, logger: Logger, control: Thread_Control) -> None:
 
         with InterfaceContextManager(self.interface_name) as interface:
 
-            while True:
+            while control.sentinal:
                 s = time.monotonic()
                 try:
                     #
                     packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
                     sniffed_timestamp: float = time.time()
-
-                    await asyncio.sleep(0.0000001)
                     await self.raw_data_queue.put((sniffed_timestamp, packet))
-                except CancelledError as e:
-                    # clean up and re raise to end
-                    print("listener service cancelled", e)
-                    raise e
 
                 except Exception as e:
                     # add logging functionality here
-                    print("other exception: ", e)
+
                     await logger.exception("listener receiving data from socket {e}")
-                #print("interface listener time diff: ", time.monotonic()-s)
-        print("done")
+                print("interface listener time diff: ", time.monotonic()-s)
+        print(f"{self.interface_name} listener has been closed")

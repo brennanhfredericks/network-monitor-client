@@ -4,37 +4,26 @@ import asyncio
 import os
 import signal
 import functools
-import concurrent.futures
+import threading
 from asyncio import Task
 from network_monitor import (
     generate_configuration_template,
     load_config_from_file,
     Service_Manager,
-    Data_Queue_Identifier,
     Interface_Listener,
-    Service_Type,
-    Service_Identifier,
 )
+from network_monitor.services import Service_Type, Service_Identifier, Thread_Control, Data_Queue_Identifier
 from network_monitor.configurations import DevConfig
 from logging import Formatter
 from aiologger import Logger
-from typing import Optional, Dict, Callable, Awaitable
+from typing import Optional, Dict, Callable, Awaitable, Coroutine
 
 # execute in its own thread
 
-# calling async aware function, however still blocking
 
-
-async def blocking_socket(interface_name: str,
-                          register_queue: Callable[[asyncio.Queue, Data_Queue_Identifier], None],
-                          register_service: Callable[[Service_Type, Service_Identifier, asyncio.Task], None]):
-    blocking_loop = asyncio.new_event_loop()
-    out_format = Formatter(
-        "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
-    )
-    queue: asyncio.Queue = asyncio.Queue()
-    logger = Logger.with_default_handlers(
-        name="interface_blocking_thread", formatter=out_format)
+async def aware_worker(interface_name: str,
+                       queue: asyncio.Queue,
+                       control: Thread_Control):
 
     # configure and listerner service
     listener_service: Interface_Listener = Interface_Listener(
@@ -42,16 +31,30 @@ async def blocking_socket(interface_name: str,
         queue
     )
 
-    listener_service_task: Task = blocking_loop.create_task(
-        listener_service.worker(logger),
+    out_format = Formatter(
+        "%(asctime)s:%(name)s:%(levelname)s"
+    )
+
+    logger = Logger.with_default_handlers(
+        name="interface_blocking_thread", formatter=None)
+
+    listener_service_task: Task = asyncio.create_task(
+        listener_service.worker(logger, control),
         name="listener-service-task"
     )
 
-    register_queue(queue, Data_Queue_Identifier)
-    register_service(Service_Type.Producer,
-                     Service_Identifier.Interface_Listener_Service, listener_service_task)
-
     await asyncio.gather(listener_service_task, return_exceptions=True)
+
+
+def blocking_socket(interface_name: str,
+                    queue: asyncio.Queue,
+                    control: Thread_Control):
+
+    # create a new evet loop
+    asyncio.run(
+        aware_worker(
+            interface_name, queue, control)
+    )
 
 
 async def async_ops():
@@ -88,6 +91,9 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
         # use parent scope variable
         nonlocal EXIT_PROGRAM
         print("application starting exist process")
+        # stop threads
+        services_manager.stop_threads()
+        print("all threads have been stopped")
         # change end blocking loop
         EXIT_PROGRAM = True
 
@@ -96,23 +102,30 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     main_loop.add_signal_handler(
         signal.SIGINT, functools.partial(signal_handler))
 
-    # await main_loop.create_task(asyncio.sleep(5))
-
-    executer: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor(
-        max_workers=2)
-    blocking_socket_future = main_loop.run_in_executor(
-        executer,
-        blocking_socket,
-        app_config.InterfaceName,
-        services_manager.add_queue,
-        services_manager.add_service
+    interface_listener_service_control: Thread_Control = Thread_Control()
+    interfac_listener_data_queue: asyncio.Queue = asyncio.Queue()
+    interface_listener_service_handler: threading.Thread = threading.Thread(
+        group=None,
+        target=blocking_socket,
+        name="interface-listener-service",
+        args=(
+            app_config.InterfaceName,
+            interfac_listener_data_queue,
+            interface_listener_service_control
+        ),
+        daemon=False
     )
+    interface_listener_service_control.handler = interface_listener_service_handler
+    services_manager.add_queue(
+        interfac_listener_data_queue, Data_Queue_Identifier.Raw_Data)
+    services_manager.add_thread(
+        "interface_listener_service_thread", interface_listener_service_control)
 
     # block until signal shutdown
     while not EXIT_PROGRAM:
-        # await services_manager.status()
         print("main loop - output")
-        await asyncio.sleep(5)
+        await services_manager.status()
+        await asyncio.sleep(1)
     #
     await services_manager.stop_all_services()
 
