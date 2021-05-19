@@ -55,8 +55,17 @@ class Service_Manager(object):
         for k, v in self._data_queues.items():
             await self.logger.info(f"Queue: {k} Size: {v.qsize()}")
 
-    def add_queue(self, queue: asyncio.Queue, queue_identifier: Data_Queue_Identifier):
+    def add_queue(self, queue: asyncio.Queue, queue_identifier: Data_Queue_Identifier) -> None:
+        """
+            Add a new data queue that used to share data between asynchronous tasks and/or threads 
+        """
         self._data_queues[queue_identifier] = queue
+
+    def get_queue(self, queue_identifier: Data_Queue_Identifier) -> asyncio.Queue:
+        """
+            Get a reference to a data queue in order to configure endpoint
+        """
+        return self._data_queues[queue_identifier]
 
     def add_thread(self, thread_name: str, thread_control: Thread_Control) -> None:
         # use service manager to handle threads

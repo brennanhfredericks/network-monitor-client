@@ -22,51 +22,23 @@ from .configurations import generate_configuration_template, DevConfig, load_con
 
 
 async def start_services(app_config: Optional[DevConfig], services_manager: Service_Manager, asynchronous_task_list: List[Task], ):
-    # use config to setup everything
-    # interface listener service add raw binary data to queue
-
-    # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
-    processed_queue: asyncio.Queue = asyncio.Queue()
-
-    services_manager.add_queue(
-        processed_queue, Data_Queue_Identifier.Processed_Data)
-
-    # setup logger
-    # gbl_format = Formatter(
-    #     "%(asctime)s %(levelname)s %(message)s %(funcName)s")
-    logger = Logger.with_default_handlers()
-
-    # configure logger and output directory Protocol Parser
-    await Protocol_Parser.init_asynchronous_operation(app_config.undefined_storage_path(), logger, asynchronous_task_list)
-
-    # configure packet parser
-    packet_filter: Packet_Filter = Packet_Filter(
-        app_config.FilterSubmissionTraffic)
-
-    packet_filter.register(app_config.Filters)
-    packer_parser: Packet_Parser = Packet_Parser(
-        raw_queue, processed_queue, packet_filter)
 
     packet_parser_service_task: Task = asyncio.create_task(
         packer_parser.worker(logger), name="packet-parser-service-task")
 
-    # produces and consumes data
-    services_manager.add_service(
-        Service_Type.Consumer, Service_Identifier.Packet_Parser_Service, packet_parser_service_task)
+    # # configure submitter service
+    # packet_submitter: Packet_Submitter = Packet_Submitter(
+    #     processed_queue,
+    #     app_config.RemoteMetadataStorage,
+    #     app_config.local_metadata_storage_path(),
+    #     app_config.ResubmissionInterval
+    # )
 
-    # configure submitter service
-    packet_submitter: Packet_Submitter = Packet_Submitter(
-        processed_queue,
-        app_config.RemoteMetadataStorage,
-        app_config.local_metadata_storage_path(),
-        app_config.ResubmissionInterval
-    )
+    # packet_submitter_service_task: Task = asyncio.create_task(
+    #     packet_submitter.worker(logger))
 
-    packet_submitter_service_task: Task = asyncio.create_task(
-        packet_submitter.worker(logger))
-
-    services_manager.add_service(
-        Service_Type.Consumer, Service_Identifier.Packet_Submitter_Service, packet_submitter_service_task)
+    # services_manager.add_service(
+    #     Service_Type.Consumer, Service_Identifier.Packet_Submitter_Service, packet_submitter_service_task)
 
 
 async def a_main(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:

@@ -11,8 +11,18 @@ from network_monitor import (
     load_config_from_file,
     Service_Manager,
 )
-from network_monitor.services import Service_Type, Service_Identifier, Thread_Control, Data_Queue_Identifier, Interface_Listener
+from network_monitor.services import (
+    Service_Type,
+    Service_Identifier,
+    Thread_Control,
+    Data_Queue_Identifier,
+    Interface_Listener,
+    Packet_Parser,
+    Packet_Submitter,
+    Packet_Filter
+)
 from network_monitor.configurations import DevConfig
+
 from network_monitor.protocols import Protocol_Parser
 from logging import Formatter
 from aiologger import Logger
@@ -36,7 +46,7 @@ async def aware_worker(interface_name: str,
     )
 
     logger = Logger.with_default_handlers(
-        name="interface_blocking_thread", formatter=None)
+        name="interface_blocking_thread", formatter=out_format)
 
     listener_service_task: Task = asyncio.create_task(
         listener_service.worker(logger, control),
@@ -66,22 +76,32 @@ async def async_ops(app_config: DevConfig, services_manager: Service_Manager):
     # before ops that are asynchronize , running in main loop
     loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
     # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
-    processed_queue: asyncio.Queue = asyncio.Queue()
-
-    services_manager.add_queue(
-        processed_queue, Data_Queue_Identifier.Processed_Data)
-
-    out_format = Formatter(
-        "%(asctime)s:%(name)s:%(levelname)s"
-    )
-
-    # configure logger. later expand to per service
-    logger = Logger.with_default_handlers(
-        name="interface_blocking_thread", formatter=None)
 
     # configure logger and output directory Protocol Parser
     Protocol_Parser.set_output_directory(app_config.undefined_storage_path())
     Protocol_Parser.set_async_loop(loop)
+
+    # configure packet filter. Need implement FilterSubmissionTraffic, only a issue if the application network packets need to be routed via
+    # the listening interface to reach the monitor server.
+
+    # create a new Packet_Filter. The Packet_Filter holds all filters and applies them to the captured packets
+    packet_filter: Packet_Filter = Packet_Filter(
+        app_config.FilterSubmissionTraffic)
+
+    # register all filters define in the configuration file
+    packet_filter.register(app_config.Filters)
+
+    # configure packet parser service
+    packet_parser: Packet_Parser = Packet_Parser(
+        services_manager.get_queue(Data_Queue_Identifier.Raw_Data), services_manager.get_queue(Data_Queue_Identifier.Processed_Data), packet_filter)
+
+    # create asynchronous service task
+    packet_parser_service_task: Task = asyncio.create_task(
+        packet_parser.worker(), name="packet-parser-service-task")
+
+    # create reference - consumes and produces data
+    services_manager.add_service(
+        Service_Type.Consumer, Service_Identifier.Packet_Parser_Service, packet_parser_service_task)
 
 
 async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
@@ -122,27 +142,35 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     main_loop.add_signal_handler(
         signal.SIGINT, functools.partial(signal_handler))
 
+    # configure data queues
+    raw_queue: asyncio.Queue = asyncio.Queue()
+    processed_queue: asyncio.Queue = asyncio.Queue()
+
+    services_manager.add_queue(
+        raw_queue, Data_Queue_Identifier.Raw_Data)
+    services_manager.add_queue(
+        processed_queue, Data_Queue_Identifier.Processed_Data)
+
     # setup interface thread and control here
     interface_listener_service_control: Thread_Control = Thread_Control()
-    interface_listener_data_queue: asyncio.Queue = asyncio.Queue()
+
     interface_listener_service_handler: threading.Thread = threading.Thread(
         group=None,
         target=blocking_socket,
         name="interface-listener-service",
         args=(
             app_config.InterfaceName,
-            interface_listener_data_queue,
+            raw_queue,
             interface_listener_service_control
         ),
         daemon=False
     )
     interface_listener_service_control.handler = interface_listener_service_handler
-    services_manager.add_queue(
-        interface_listener_data_queue, Data_Queue_Identifier.Raw_Data)
+
     services_manager.add_thread(
         "interface_listener_service_thread", interface_listener_service_control)
 
-    asynchronous_service_spawn_task: asyncio.Task = main_loop.create_task(
+    main_loop.create_task(
         async_ops(app_config, services_manager))
 
     # block until signal shutdown
@@ -154,8 +182,10 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     # cancel all asynchronize service running
     await services_manager.stop_all_services()
 
-    # wait for asynchronous function that spawns asynchronous services
-    await asyncio.gather(asynchronous_service_spawn_task)
+    # use introspection to retrieve all set of not yet finished Task objects run by the loop.
+    tasks = asyncio.all_tasks(main_loop)
+    # error out on faults
+    await asyncio.gather(*tasks, return_exceptions=False)
 
     # stop main loop
     main_loop.stop()

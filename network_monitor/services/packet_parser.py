@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from ..protocols import AF_Packet, Packet_802_3, Packet_802_2, Protocol_Parser
 from ..filters.deep_walker import flatten_protocols
+from logging import Formatter
 from aiologger import Logger
 """
     Packet Filter
@@ -142,6 +143,7 @@ class Packet_Filter(object):
         # add originating information
         _p["AF_Packet"] = af_packet.serialize()
 
+        # if no filters are defined return serialized packet
         if not self.__filters:
             return _p
 
@@ -173,13 +175,16 @@ class Packet_Parser(object):
         else:
             self.packet_filter = packet_filter
 
-    async def worker(self, logger: Optional[Logger]) -> None:
+    async def worker(self) -> None:
+        out_format = Formatter(
+            "%(asctime)s:%(name)s:%(levelname)s"
+        )
+
+        logger = Logger.with_default_handlers(
+            name=__name__, formatter=out_format)
 
         while True:
-
             try:
-                s = time.monotonic()
-
                 sniffed_timestamp, (raw_bytes, address) = await self.raw_data_queue.get()
 
                 # do processing with data
@@ -200,8 +205,7 @@ class Packet_Parser(object):
                 # notify queued item processed
                 self.raw_data_queue.task_done()
 
-                # implement packet filter here before adding data to ouput queue
-
+                # implement packet filter here before adding data to output queue
                 packet: Optional[Dict[str, Dict[str, Union[str, int, float]]]] = self.packet_filter.apply(
                     af_packet, out_packet)
 
@@ -219,10 +223,8 @@ class Packet_Parser(object):
                 # implement stream holder here
                 #print("packet parser time diff: ", time.monotonic()-s)
             except CancelledError as e:
-                # triggered by user
-                print("packet parser service cancelled", e)
-                # check that raw queue empty
+                # perform any operation before shut down here
+                # print("packet parser service cancelled", e)
                 raise e
             except Exception as e:
-                if logger is not None:
-                    await logger.exception(f"other exception in packer_parser: {e}")
+                await logger.exception(f"other exception in packer_parser: {e}")

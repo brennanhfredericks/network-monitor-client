@@ -116,7 +116,7 @@ class Interface_Listener(object):
         with InterfaceContextManager(self.interface_name) as interface:
 
             while control.sentinal:
-                s = time.monotonic()
+                #s = time.monotonic()
                 try:
                     #
                     packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
@@ -127,5 +127,5 @@ class Interface_Listener(object):
                     # add logging functionality here
 
                     await logger.exception("listener receiving data from socket {e}")
-                print("interface listener time diff: ", time.monotonic()-s)
+                #print("interface listener time diff: ", time.monotonic()-s)
         print(f"{self.interface_name} listener has been closed")
