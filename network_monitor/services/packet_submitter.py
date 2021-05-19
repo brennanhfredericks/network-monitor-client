@@ -161,7 +161,8 @@ class Submitter(object):
             self._buffer.clear()
 
     async def flush(self):
-        await self._process()
+        if len(self._buffer) > 0:
+            await self._process()
 
     # submit data to server asynchronously
     async def process(self, data: Dict[str, Dict[str, Union[str, int]]]) -> None:

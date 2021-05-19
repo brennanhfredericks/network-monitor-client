@@ -99,12 +99,13 @@ async def init_blocking_services(app_config: DevConfig, services_manager: Servic
 
     # check  if any error occured
     if interface_listener_service_control.error_state:
+        print("error occured in thread")
         # stop the thread that the error occured in
         services_manager.stop_thread("interface-listener-service")
 
         # for now force application to exit by throwing and exception. this exeception in captured in the main function.
-        raise ValueError(
-            "Unable to start interface listener most likely due to insufficient privileges")
+        # raise ValueError(
+        #     "Unable to start interface listener most likely due to insufficient privileges")
 
 
 async def init_asynchronous_services(app_config: DevConfig, services_manager: Service_Manager) -> None:
@@ -147,7 +148,7 @@ async def init_asynchronous_services(app_config: DevConfig, services_manager: Se
     )
 
     packet_submitter_service_task: Task = asyncio.create_task(
-        packet_submitter.worker()
+        packet_submitter.worker(), name="packet=submitter-service-task"
     )
 
     services_manager.add_service(
@@ -218,12 +219,21 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     await services_manager.stop_all_services()
 
     # use introspection to retrieve all set of not yet finished Task objects run by the loop.
-    tasks = asyncio.all_tasks(main_loop)
-    # error out on exceptions
-    await asyncio.gather(*tasks, return_exceptions=False)
 
-    # stop main loop
-    main_loop.stop()
+    if len(asyncio.all_tasks(main_loop)) > 1:
+        # wait for other tasks to complete
+        tasks = []
+        for task in asyncio.all_tasks(main_loop):
+            # skip this coroutine function
+            if task.get_coro().__name__ == "start_app":
+                continue
+            tasks.append(task)
+        # error out on exceptions
+        await asyncio.gather(*tasks, return_exceptions=False)
+        main_loop.stop()
+    else:
+        # stop main loop
+        main_loop.stop()
 
 
 def main(args: argparse.Namespace) -> int:
@@ -260,13 +270,15 @@ def main(args: argparse.Namespace) -> int:
 
                 # init_method from configuration file load
                 loop.create_task(
-                    start_app(configuration_file=args.load_config_file)
+                    start_app(configuration_file=args.load_config_file),
+                    name="start_app"
                 )
 
             elif args.interface:
                 # start on specified interface
                 loop.create_task(
-                    start_app(interface_name=args.interface)
+                    start_app(interface_name=args.interface),
+                    name="start_app"
                 )
 
             # run until loop.stop() is call

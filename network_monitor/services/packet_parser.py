@@ -1,6 +1,6 @@
 import time
 import json
-
+import asyncio
 
 from asyncio import Queue, CancelledError
 
@@ -219,7 +219,7 @@ class Packet_Parser(object):
                     packet["Info"] = info
 
                     await self.processed_data_queue.put(packet)
-
+                    await asyncio.sleep(0.01)
                 # implement stream holder here
                 #print("packet parser time diff: ", time.monotonic()-s)
             except CancelledError as e:

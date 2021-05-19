@@ -6,7 +6,7 @@ import time
 import sys
 import asyncio
 from socket import socket, AF_PACKET, SOCK_RAW, htons
-from asyncio import Queue,
+from asyncio import Queue
 
 from logging import Formatter
 from aiologger import Logger
@@ -122,7 +122,7 @@ class Interface_Listener(object):
             name="interface_blocking_thread",
             formatter=out_format
         )
-
+        loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         # try to open low level socket
         try:
 
@@ -143,4 +143,8 @@ class Interface_Listener(object):
         except Exception as e:
             control.error_state = True
 
-            await logger.exception(f"listener opening low level socket {e}")
+            await logger.exception(f"error occured trying to open level socket {e}")
+
+            # stops the threaded asynchronous loop and allow the thread target function to terminate normally
+            # if the event loop is never stopped the thread will never terminate
+            loop.stop()

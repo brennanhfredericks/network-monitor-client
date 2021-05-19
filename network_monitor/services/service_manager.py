@@ -79,6 +79,9 @@ class Service_Manager(object):
     def stop_thread(self, thread_name: str):
 
         self._threads[thread_name].sentinal = False
+        print(f"joining thread {thread_name}")
+        print(self._threads[thread_name].handler.is_alive(),
+              self._threads[thread_name].handler.ident)
         self._threads[thread_name].handler.join()
 
         # remove thread reference
@@ -88,7 +91,7 @@ class Service_Manager(object):
     def stop_threads(self):
 
         for t_name, t_ctrl in self._threads.items():
-
+            print(f"stopping thread {t_name}")
             # stop while loop for running
             t_ctrl.sentinal = False
             # wait for thread to join
