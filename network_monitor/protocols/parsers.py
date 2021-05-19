@@ -10,12 +10,13 @@ from functools import lru_cache
 
 
 from .protocol_utils import Unknown
+from logging import Formatter
 from aiologger import Logger
 
 from .layer import Layer_Protocols
 
 
-class Parser:
+class __Parser:
     """ class to register all packet parsers for various levels"""
 
     __protocol_parsers: Dict[int, Dict[int, Any]] = {}
@@ -27,7 +28,8 @@ class Parser:
         for layer_protocol in Layer_Protocols:
             self.__protocol_parsers[layer_protocol] = {}
 
-        self.logger: Optional[Logger] = None
+        self.__logger: Optional[Logger] = None
+        self.__loop: Optional[asyncio.AbstractEventLoop] = None
         self.__log: Optional[str] = None
         self.__fname: str = f"raw_unknown_protocols_{int(time.time())}.lp"
 
@@ -36,14 +38,20 @@ class Parser:
 
         return self.__protocol_parsers
 
-    async def init_asynchronous_operation(self, undefined_output_directory: str, logger: Logger(), task_list: List[Task]) -> None:
+    def set_output_directory(self, output_directory: str) -> None:
 
-        if not os.path.exists(undefined_output_directory):
-            os.makedirs(undefined_output_directory)
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
 
-        self.__log = undefined_output_directory
-        self.logger: Logger = logger
-        self.task_list: List[Task] = []
+        out_format = Formatter(
+            "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
+        )
+        self.__log = output_directory
+        self.__logger = Logger.with_default_handlers(
+            name=__name__, formatter=out_format)
+
+    def set_async_loop(self, loop: asyncio.AbstractEventLoop):
+        self.__loop = loop
 
     def register(self, layer: Layer_Protocols, identifier: int, protocol_parser: Any):
         # check if dataclass and callable
@@ -80,52 +88,47 @@ class Parser:
         else:
             return res
 
-    async def unknown_storage(self, info: str, raw_bytes: bytes) -> None:
+    async def file_logger(self, info: str, raw_bytes: bytes) -> None:
         async with aiofiles.open(os.path.join(self.__log, self.__fname), "ab") as fout:
             await fout.write(base64.b64encode(info.encode()))
             await fout.write(base64.b64encode(raw_bytes))
 
-    async def log(self, message: str) -> None:
-        await self.logger.exception(message)
-
-    # task to asynchronous execution loop
-    def execute_async(self, coro, *args) -> None:
-
-        self.task_list.append(
-            asyncio.create_task(
-                coro(*args)
-            )
-        )
+    async def std_logger(self, message: str) -> None:
+        await self.__logger.exception(message)
 
     def parse(self, layer: Layer_Protocols, identifier: int, raw_bytes: bytes) -> Any:
-        """ use to register parser"""
+        """ 
+            used to lookup registered protocol parsers and instantiate the protocol parser with the raw bytes 
+        """
+        # all asynchronous task are retrieved via introspection and awaited before exist
         try:
             res = self.__protocol_parsers[layer][identifier](raw_bytes)
 
-        # asnyc
         except KeyError as e:
-            self.execute_async(
-                self.log,
-                f"Protocol Not Implemented Exception - Layer: {layer}, identifier: {identifier}"
-
-            )
-            self.execute_async(
-                self.unknown_storage,
-                f"{layer}_{identifier}",
-                raw_bytes,
-
-            )
+            if self.__loop is not None:
+                self.__loop.create_task(
+                    self.std_logger(
+                        f"Protocol Not Implemented Exception - Layer: {layer}, identifier: {identifier}"
+                    )
+                )
+                self.__loop.create_task(
+                    self.file_logger(
+                        f"{layer}_{identifier}",
+                        raw_bytes
+                    )
+                )
 
         except Exception as e:
-            self.execute_async(
-                self.log,
-                f"Protocol Exception: {e}"
-
-            )
+            if self.__loop is not None:
+                self.__loop.create_task(
+                    self.std_logger(
+                        f"Protocol Exception: {e}"
+                    )
+                )
 
             return Unknown("no protocol parser available", identifier, raw_bytes)
         else:
             return res
 
 
-Protocol_Parser: Parser = Parser()
+Protocol_Parser: __Parser = __Parser()

@@ -10,10 +10,10 @@ from network_monitor import (
     generate_configuration_template,
     load_config_from_file,
     Service_Manager,
-    Interface_Listener,
 )
-from network_monitor.services import Service_Type, Service_Identifier, Thread_Control, Data_Queue_Identifier
+from network_monitor.services import Service_Type, Service_Identifier, Thread_Control, Data_Queue_Identifier, Interface_Listener
 from network_monitor.configurations import DevConfig
+from network_monitor.protocols import Protocol_Parser
 from logging import Formatter
 from aiologger import Logger
 from typing import Optional, Dict, Callable, Awaitable, Coroutine
@@ -62,9 +62,26 @@ def blocking_socket(interface_name: str,
     )
 
 
-async def async_ops():
-    # before ops that are async
-    ...
+async def async_ops(app_config: DevConfig, services_manager: Service_Manager):
+    # before ops that are asynchronize , running in main loop
+    loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+    # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
+    processed_queue: asyncio.Queue = asyncio.Queue()
+
+    services_manager.add_queue(
+        processed_queue, Data_Queue_Identifier.Processed_Data)
+
+    out_format = Formatter(
+        "%(asctime)s:%(name)s:%(levelname)s"
+    )
+
+    # configure logger. later expand to per service
+    logger = Logger.with_default_handlers(
+        name="interface_blocking_thread", formatter=None)
+
+    # configure logger and output directory Protocol Parser
+    Protocol_Parser.set_output_directory(app_config.undefined_storage_path())
+    Protocol_Parser.set_async_loop(loop)
 
 
 async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
@@ -83,9 +100,6 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     elif configuration_file is not None:
         # load file and read data. Override default values with new value
         app_config = load_config_from_file(configuration_file)
-
-    # # other task list, used to inject asynchruous functionality for blocking code
-    # asynchronous_task_list: List[Task] = []
 
     # # holds all coroutine services
     services_manager: Service_Manager = Service_Manager()
@@ -108,28 +122,28 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     main_loop.add_signal_handler(
         signal.SIGINT, functools.partial(signal_handler))
 
-    # setup interface thread and controls here
+    # setup interface thread and control here
     interface_listener_service_control: Thread_Control = Thread_Control()
-    interfac_listener_data_queue: asyncio.Queue = asyncio.Queue()
+    interface_listener_data_queue: asyncio.Queue = asyncio.Queue()
     interface_listener_service_handler: threading.Thread = threading.Thread(
         group=None,
         target=blocking_socket,
         name="interface-listener-service",
         args=(
             app_config.InterfaceName,
-            interfac_listener_data_queue,
+            interface_listener_data_queue,
             interface_listener_service_control
         ),
         daemon=False
     )
     interface_listener_service_control.handler = interface_listener_service_handler
     services_manager.add_queue(
-        interfac_listener_data_queue, Data_Queue_Identifier.Raw_Data)
+        interface_listener_data_queue, Data_Queue_Identifier.Raw_Data)
     services_manager.add_thread(
         "interface_listener_service_thread", interface_listener_service_control)
 
     asynchronous_service_spawn_task: asyncio.Task = main_loop.create_task(
-        async_ops())
+        async_ops(app_config, services_manager))
 
     # block until signal shutdown
     while not EXIT_PROGRAM:
