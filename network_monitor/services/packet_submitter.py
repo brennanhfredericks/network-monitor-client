@@ -226,14 +226,14 @@ class Packet_Submitter(object):
 
         while True:
             try:
-
+                #s = time.monotonic()
                 # wait for processed data from the packer service queue
                 data: Dict[str, Dict[str, Union[str, int]]] = await self.processed_data_queue.get()
 
                 await self._submitter.process(data)
 
                 self.processed_data_queue.task_done()
-
+                #print("packet parser time diff: ", time.monotonic()-s)
             except CancelledError as e:
                 # clear internal buffer
                 await self._submitter.flush()

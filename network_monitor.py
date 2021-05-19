@@ -5,7 +5,7 @@ import os
 import signal
 import functools
 import threading
-from asyncio import Task
+
 from network_monitor import (
     generate_configuration_template,
     load_config_from_file,
@@ -26,7 +26,7 @@ from network_monitor.configurations import DevConfig
 from network_monitor.protocols import Protocol_Parser
 from logging import Formatter
 from aiologger import Logger
-from typing import Optional, Dict, Callable, Awaitable, Coroutine
+from typing import Optional, Dict, Callable, Awaitable, Coroutine, List
 
 # execute in its own thread
 
@@ -36,6 +36,7 @@ async def aware_worker(interface_name: str,
                        control: Thread_Control):
 
     loop = asyncio.get_running_loop()
+
     # set refence to this loop, could always push corotine to this loop aswell
     control.loop = loop
 
@@ -45,16 +46,12 @@ async def aware_worker(interface_name: str,
         queue
     )
 
-    loop.create_task(
+    listener_service_task = loop.create_task(
         listener_service.worker(control),
         name="listener-service-task"
     )
 
-    # use introspection to retrieve all task
-
-    tasks = asyncio.all_tasks(loop=loop)
-
-    await asyncio.gather(*tasks, return_exceptions=False)
+    await asyncio.gather(listener_service_task, return_exceptions=False)
 
 
 def threaded_event_loop(interface_name: str,
@@ -108,14 +105,16 @@ async def init_blocking_services(app_config: DevConfig, services_manager: Servic
         #     "Unable to start interface listener most likely due to insufficient privileges")
 
 
-async def init_asynchronous_services(app_config: DevConfig, services_manager: Service_Manager) -> None:
-    # before ops that are asynchronize , running in main loop
-    loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
-    # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
+async def app_status(services_manager: Service_Manager, update_interval: int = 5):
+    while services_manager.run:
+        print("main loop - output")
+        await services_manager.status()
+        await asyncio.sleep(update_interval)
+        # cancel all asynchronize service running
+    await services_manager.stop_all_services()
 
-    # configure logger and output directory Protocol Parser
-    Protocol_Parser.set_output_directory(app_config.undefined_storage_path())
-    Protocol_Parser.set_async_loop(loop)
+
+async def packet_parser_service(app_config: DevConfig, services_manager: Service_Manager) -> asyncio.Task:
 
     # configure packet filter. Need implement FilterSubmissionTraffic, only a issue if the application network packets need to be routed via
     # the listening interface to reach the monitor server.
@@ -132,13 +131,17 @@ async def init_asynchronous_services(app_config: DevConfig, services_manager: Se
         services_manager.get_queue(Data_Queue_Identifier.Raw_Data), services_manager.get_queue(Data_Queue_Identifier.Processed_Data), packet_filter)
 
     # create asynchronous service task
-    packet_parser_service_task: Task = asyncio.create_task(
+    packet_parser_service_task: asyncio.Task = asyncio.create_task(
         packet_parser.worker(), name="packet-parser-service-task")
 
     # create reference - consumes and produces data
     services_manager.add_service(
         Service_Type.Consumer, Service_Identifier.Packet_Parser_Service, packet_parser_service_task)
 
+    return packet_parser_service_task
+
+
+async def packet_submitter_service(app_config: DevConfig, services_manager: Service_Manager) -> asyncio.Task:
     # configure packet submitter service
     packet_submitter: Packet_Submitter = Packet_Submitter(
         services_manager.get_queue(Data_Queue_Identifier.Processed_Data),
@@ -147,12 +150,14 @@ async def init_asynchronous_services(app_config: DevConfig, services_manager: Se
         app_config.ResubmissionInterval
     )
 
-    packet_submitter_service_task: Task = asyncio.create_task(
+    packet_submitter_service_task: asyncio.Task = asyncio.create_task(
         packet_submitter.worker(), name="packet=submitter-service-task"
     )
 
     services_manager.add_service(
         Service_Type.Consumer, Service_Identifier.Packet_Submitter_Service, packet_submitter_service_task)
+
+    return packet_submitter_service_task
 
 
 async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
@@ -175,18 +180,14 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     # # holds all coroutine services
     services_manager: Service_Manager = Service_Manager()
 
-    # main loop blocking part
-    EXIT_PROGRAM: bool = False
-
     def signal_handler(*args):
         # use parent scope variable
-        nonlocal EXIT_PROGRAM
         print("application starting exist process")
         # stop threads, only have one producer thread for now.
         services_manager.stop_threads()
         print("all threads have been stopped")
         # change blocking loop control
-        EXIT_PROGRAM = True
+        services_manager.run = False
 
     # ctrl+z and ctrl+c signal handlers
     main_loop.add_signal_handler(
@@ -206,20 +207,24 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     # wait for producer service to start before trying to start any consumer services
     await main_loop.create_task(init_blocking_services(app_config, services_manager))
 
-    main_loop.create_task(
-        init_asynchronous_services(app_config, services_manager))
+    # configure logger and output directory Protocol Parser
+    Protocol_Parser.set_output_directory(app_config.undefined_storage_path())
+    Protocol_Parser.set_async_loop(main_loop)
 
+    packet_parser_service_task = await main_loop.create_task(
+        packet_parser_service(app_config, services_manager))
+
+    packet_submitter_service_task = await main_loop.create_task(
+        packet_submitter_service(app_config, services_manager))
+
+    services_manager.run = True
+    app_status_task: asyncio.Task = main_loop.create_task(
+        app_status(services_manager))
     # block until signal shutdown
-    while not EXIT_PROGRAM:
-        print("main loop - output")
-        await services_manager.status()
-        await asyncio.sleep(1)
 
-    # cancel all asynchronize service running
-    await services_manager.stop_all_services()
+    await asyncio.gather(app_status_task, packet_parser_service_task, packet_submitter_service_task, return_exceptions=True)
 
     # use introspection to retrieve all set of not yet finished Task objects run by the loop.
-
     if len(asyncio.all_tasks(main_loop)) > 1:
         # wait for other tasks to complete
         tasks = []
