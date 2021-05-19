@@ -6,7 +6,9 @@ import time
 import sys
 import asyncio
 from socket import socket, AF_PACKET, SOCK_RAW, htons
-from asyncio import Queue, CancelledError
+from asyncio import Queue,
+
+from logging import Formatter
 from aiologger import Logger
 from typing import Optional, List, Dict, Any, Tuple
 from .service_manager import Thread_Control
@@ -90,7 +92,7 @@ class InterfaceContextManager(object):
             fcntl.ioctl(self._llsocket, FLAGS.SIOCSIFFLAGS, self._ifr)
         # windows
         elif os.name == "nt":
-            #self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+            # self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
             ...
 
 
@@ -110,22 +112,35 @@ class Interface_Listener(object):
 
         return interface.recvfrom(self.BUFFER_SIZE)
 
-    # if operation is not suspended or waiting it will pegg processor
-    async def worker(self, logger: Logger, control: Thread_Control) -> None:
+    # if operation is not true asynchronous hence the need to run in a seperate thread
+    async def worker(self, control: Thread_Control) -> None:
+        out_format = Formatter(
+            "%(asctime)s:%(name)s:%(levelname)s"
+        )
 
-        with InterfaceContextManager(self.interface_name) as interface:
+        logger = Logger.with_default_handlers(
+            name="interface_blocking_thread",
+            formatter=out_format
+        )
 
-            while control.sentinal:
-                #s = time.monotonic()
-                try:
-                    #
-                    packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
-                    sniffed_timestamp: float = time.time()
-                    await self.raw_data_queue.put((sniffed_timestamp, packet))
+        # try to open low level socket
+        try:
 
-                except Exception as e:
-                    # add logging functionality here
+            with InterfaceContextManager(self.interface_name) as interface:
+                control.error_state = False
+                while control.sentinal:
+                    # s = time.monotonic()
+                    try:
+                        #
+                        packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
+                        sniffed_timestamp: float = time.time()
+                        await self.raw_data_queue.put((sniffed_timestamp, packet))
 
-                    await logger.exception("listener receiving data from socket {e}")
-                #print("interface listener time diff: ", time.monotonic()-s)
-        print(f"{self.interface_name} listener has been closed")
+                    except Exception as e:
+                        # add logging functionality here
+                        await logger.exception(f"listener receiving data from socket {e}")
+                    # print("interface listener time diff: ", time.monotonic()-s)
+        except Exception as e:
+            control.error_state = True
+
+            await logger.exception(f"listener opening low level socket {e}")

@@ -35,30 +35,31 @@ async def aware_worker(interface_name: str,
                        queue: asyncio.Queue,
                        control: Thread_Control):
 
+    loop = asyncio.get_running_loop()
+    # set refence to this loop, could always push corotine to this loop aswell
+    control.loop = loop
+
     # configure and listerner service
     listener_service: Interface_Listener = Interface_Listener(
         interface_name,
         queue
     )
 
-    out_format = Formatter(
-        "%(asctime)s:%(name)s:%(levelname)s"
-    )
-
-    logger = Logger.with_default_handlers(
-        name="interface_blocking_thread", formatter=out_format)
-
-    listener_service_task: Task = asyncio.create_task(
-        listener_service.worker(logger, control),
+    loop.create_task(
+        listener_service.worker(control),
         name="listener-service-task"
     )
 
-    await asyncio.gather(listener_service_task, return_exceptions=True)
+    # use introspection to retrieve all task
+
+    tasks = asyncio.all_tasks(loop=loop)
+
+    await asyncio.gather(*tasks, return_exceptions=False)
 
 
-def blocking_socket(interface_name: str,
-                    queue: asyncio.Queue,
-                    control: Thread_Control):
+def threaded_event_loop(interface_name: str,
+                        queue: asyncio.Queue,
+                        control: Thread_Control):
 
     # create a new event loop and add the interfce listener service to the loop.
     # the service is async aware however still operation in a blocking manner
@@ -72,7 +73,41 @@ def blocking_socket(interface_name: str,
     )
 
 
-async def async_ops(app_config: DevConfig, services_manager: Service_Manager):
+async def init_blocking_services(app_config: DevConfig, services_manager: Service_Manager) -> None:
+    # setup service control mechanicm
+    interface_listener_service_control: Thread_Control = Thread_Control()
+
+    # configure service thread
+    interface_listener_service_control.handler = threading.Thread(
+        group=None,
+        target=threaded_event_loop,
+        name="interface-listener-service",
+        args=(
+            app_config.InterfaceName,
+            services_manager.get_queue(Data_Queue_Identifier.Raw_Data),
+            interface_listener_service_control
+        ),
+        daemon=False
+    )
+
+    # add thread to services manager and start
+    services_manager.add_thread(
+        "interface-listener-service", interface_listener_service_control)
+
+    # wait a moment to check if service started in thread
+    await asyncio.sleep(0.1)
+
+    # check  if any error occured
+    if interface_listener_service_control.error_state:
+        # stop the thread that the error occured in
+        services_manager.stop_thread("interface-listener-service")
+
+        # for now force application to exit by throwing and exception. this exeception in captured in the main function.
+        raise ValueError(
+            "Unable to start interface listener most likely due to insufficient privileges")
+
+
+async def init_asynchronous_services(app_config: DevConfig, services_manager: Service_Manager) -> None:
     # before ops that are asynchronize , running in main loop
     loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
     # packet parser service consume data from the raw_queue processes the data and adds it to the processed queue
@@ -102,6 +137,21 @@ async def async_ops(app_config: DevConfig, services_manager: Service_Manager):
     # create reference - consumes and produces data
     services_manager.add_service(
         Service_Type.Consumer, Service_Identifier.Packet_Parser_Service, packet_parser_service_task)
+
+    # configure packet submitter service
+    packet_submitter: Packet_Submitter = Packet_Submitter(
+        services_manager.get_queue(Data_Queue_Identifier.Processed_Data),
+        app_config.RemoteMetadataStorage,
+        app_config.local_metadata_storage_path(),
+        app_config.ResubmissionInterval
+    )
+
+    packet_submitter_service_task: Task = asyncio.create_task(
+        packet_submitter.worker()
+    )
+
+    services_manager.add_service(
+        Service_Type.Consumer, Service_Identifier.Packet_Submitter_Service, packet_submitter_service_task)
 
 
 async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:
@@ -137,6 +187,7 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
         # change blocking loop control
         EXIT_PROGRAM = True
 
+    # ctrl+z and ctrl+c signal handlers
     main_loop.add_signal_handler(
         signal.SIGTSTP, functools.partial(signal_handler))
     main_loop.add_signal_handler(
@@ -151,27 +202,11 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     services_manager.add_queue(
         processed_queue, Data_Queue_Identifier.Processed_Data)
 
-    # setup interface thread and control here
-    interface_listener_service_control: Thread_Control = Thread_Control()
-
-    interface_listener_service_handler: threading.Thread = threading.Thread(
-        group=None,
-        target=blocking_socket,
-        name="interface-listener-service",
-        args=(
-            app_config.InterfaceName,
-            raw_queue,
-            interface_listener_service_control
-        ),
-        daemon=False
-    )
-    interface_listener_service_control.handler = interface_listener_service_handler
-
-    services_manager.add_thread(
-        "interface_listener_service_thread", interface_listener_service_control)
+    # wait for producer service to start before trying to start any consumer services
+    await main_loop.create_task(init_blocking_services(app_config, services_manager))
 
     main_loop.create_task(
-        async_ops(app_config, services_manager))
+        init_asynchronous_services(app_config, services_manager))
 
     # block until signal shutdown
     while not EXIT_PROGRAM:
@@ -184,7 +219,7 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
 
     # use introspection to retrieve all set of not yet finished Task objects run by the loop.
     tasks = asyncio.all_tasks(main_loop)
-    # error out on faults
+    # error out on exceptions
     await asyncio.gather(*tasks, return_exceptions=False)
 
     # stop main loop

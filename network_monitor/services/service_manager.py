@@ -17,6 +17,8 @@ class Thread_Control(object):
 
     handler: Optional[threading.Thread] = None
     sentinal: bool = True
+    loop: Optional[asyncio.AbstractEventLoop] = None
+    error_state: Optional[bool] = None
 
 
 class Data_Queue_Identifier(Enum):
@@ -73,6 +75,15 @@ class Service_Manager(object):
 
         # start thread
         self._threads[thread_name].handler.start()
+
+    def stop_thread(self, thread_name: str):
+
+        self._threads[thread_name].sentinal = False
+        self._threads[thread_name].handler.join()
+
+        # remove thread reference
+        self._threads.pop(thread_name)
+        print(f"thread {thread_name} has been stopped")
 
     def stop_threads(self):
 
