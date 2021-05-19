@@ -50,7 +50,12 @@ def blocking_socket(interface_name: str,
                     queue: asyncio.Queue,
                     control: Thread_Control):
 
-    # create a new evet loop
+    # create a new event loop and add the interfce listener service to the loop.
+    # the service is async aware however still operation in a blocking manner
+
+    # can always later use new eventloop to peform other corotines.
+    # could also use introspection to gather current task or all tasks in provided loop
+    # asyncio.run_coroutine_threadsafe to add corotines between threads
     asyncio.run(
         aware_worker(
             interface_name, queue, control)
@@ -58,6 +63,7 @@ def blocking_socket(interface_name: str,
 
 
 async def async_ops():
+    # before ops that are async
     ...
 
 
@@ -91,10 +97,10 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
         # use parent scope variable
         nonlocal EXIT_PROGRAM
         print("application starting exist process")
-        # stop threads
+        # stop threads, only have one producer thread for now.
         services_manager.stop_threads()
         print("all threads have been stopped")
-        # change end blocking loop
+        # change blocking loop control
         EXIT_PROGRAM = True
 
     main_loop.add_signal_handler(
@@ -102,6 +108,7 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     main_loop.add_signal_handler(
         signal.SIGINT, functools.partial(signal_handler))
 
+    # setup interface thread and controls here
     interface_listener_service_control: Thread_Control = Thread_Control()
     interfac_listener_data_queue: asyncio.Queue = asyncio.Queue()
     interface_listener_service_handler: threading.Thread = threading.Thread(
@@ -121,13 +128,20 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     services_manager.add_thread(
         "interface_listener_service_thread", interface_listener_service_control)
 
+    asynchronous_service_spawn_task: asyncio.Task = main_loop.create_task(
+        async_ops())
+
     # block until signal shutdown
     while not EXIT_PROGRAM:
         print("main loop - output")
         await services_manager.status()
         await asyncio.sleep(1)
-    #
+
+    # cancel all asynchronize service running
     await services_manager.stop_all_services()
+
+    # wait for asynchronous function that spawns asynchronous services
+    await asyncio.gather(asynchronous_service_spawn_task)
 
     # stop main loop
     main_loop.stop()
