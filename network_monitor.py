@@ -193,19 +193,25 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     # check if threads started succesfull
     if il_service_control.error:
         print("error in interface listener thread")
-        services_manager.stop_threaded_service(
-            Service_Identifier.Interface_Listener_Service)
+        services_manager.close_threads()
         return EXIT_FAILURE
 
     # start packet submitter service
-    # ps_service_control = Service_Control("packet submiter")
-    # await threaded_packet_submitter_service(
-    #     services_manager,
-    #     ps_service_control,
-    #     RemoteMetadataStorage=app_config.RemoteMetadataStorage,
-    #     LocalMetadataStorage=app_config.LocalMetadataStorage,
-    #     ResubmissionInterval=app_config.ResubmissionInterval,
-    #     GeneralLogStorage=app_config.GeneralLogStorage)
+    ps_service_control = Service_Control("packet submiter")
+    await threaded_packet_submitter_service(
+        services_manager,
+        ps_service_control,
+        RemoteMetadataStorage=app_config.RemoteMetadataStorage,
+        LocalMetadataStorage=app_config.LocalMetadataStorage,
+        ResubmissionInterval=app_config.ResubmissionInterval,
+        GeneralLogStorage=app_config.GeneralLogStorage)
+
+    #  wait and check if threads start successfully
+    await asyncio.sleep(0.1)
+    if ps_service_control.error:
+        print("error in packet submitter service thread")
+        services_manager.close_threads()
+        return EXIT_FAILURE
 
     # wait and check if threads start successfully
 
@@ -216,8 +222,8 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     #     services_manager.close_threads()
     #     print("sadasds", asyncio.all_tasks(main_loop))
     #     # stop main application
-        # main_loop.stop()
-        #raise ValueError("Error occured in thread(s) at startup")
+    # main_loop.stop()
+    #raise ValueError("Error occured in thread(s) at startup")
 
     # configure logger and output directory Protocol Parser
     # Protocol_Parser.set_output_directory(app_config.UndefinedProtocolStorage)

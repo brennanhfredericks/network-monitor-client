@@ -226,7 +226,7 @@ class Packet_Submitter(object):
         service_control.loop = loop
 
         stream_format = Formatter(
-            "%(asctime)s -:- %(name)s -:- %(levelname)s -:- %(message)s"
+            "%(asctime)s -:- %(name)s -:- %(levelname)s"
         )
 
         logger = Logger(name=__name__)
@@ -237,14 +237,14 @@ class Packet_Submitter(object):
         logger.add_handler(stream_handler)
 
         try:
+
             file_handler = AsyncFileHandler(
                 os.path.join(self.log_directory, "packet_submitter.log"))
             logger.add_handler(file_handler)
-
+            assert False
         except Exception as e:
             await logger.exception("error creating AsycFileHandler")
             service_control.error = True
-            return
         else:
 
             # configure submitter logger
@@ -270,6 +270,3 @@ class Packet_Submitter(object):
                 except Exception as e:
                     await logger.exception(f"An error occured in packet submitter service")
             await logger.info("about exit packet parser")
-        finally:
-            # stop async loop to exit thread normally
-            loop.stop()

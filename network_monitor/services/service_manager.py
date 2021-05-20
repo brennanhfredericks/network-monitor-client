@@ -57,7 +57,7 @@ class Service_Manager(object):
         self._logger = Logger()
 
         stream_format = Formatter(
-            "%(asctime)s -:- %(name)s -:- %(levelname)s -:- %(message)s"
+            "%(asctime)s -:- %(name)s -:- %(levelname)s"
         )
         stream_handler = AsyncStreamHandler(
             stream=sys.stdout, formatter=stream_format)

@@ -1,0 +1,55 @@
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
+error creating AsycFileHandler
+Traceback (most recent call last):
+  File "/home/knowns/workflow/network-monitor-client/network_monitor/services/packet_submitter.py", line 244, in worker
+    assert False
+AssertionError
