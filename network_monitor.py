@@ -29,7 +29,7 @@ import queue
 import logging
 
 EXIT_SUCCESS = 0
-EXIT_FAILURE = 0
+EXIT_FAILURE = 1
 # execute in its own thread
 
 
@@ -213,21 +213,9 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
         services_manager.close_threads()
         return EXIT_FAILURE
 
-    # wait and check if threads start successfully
-
-    # check if threads started succesfull
-    # if services_manager.check_for_exceptions():
-    #     print("error occured at startup stopping threads")
-    #     # close threads
-    #     services_manager.close_threads()
-    #     print("sadasds", asyncio.all_tasks(main_loop))
-    #     # stop main application
-    # main_loop.stop()
-    #raise ValueError("Error occured in thread(s) at startup")
-
     # configure logger and output directory Protocol Parser
-    # Protocol_Parser.set_output_directory(app_config.UndefinedProtocolStorage)
-    # Protocol_Parser.set_async_loop(main_loop)
+    Protocol_Parser.set_output_directory(app_config.UndefinedProtocolStorage)
+    Protocol_Parser.set_async_loop(main_loop)
 
     # packet_parser_service_task = await main_loop.create_task(
     #     packet_parser_service(app_config, services_manager))

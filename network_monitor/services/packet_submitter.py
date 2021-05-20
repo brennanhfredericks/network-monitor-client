@@ -241,7 +241,7 @@ class Packet_Submitter(object):
             file_handler = AsyncFileHandler(
                 os.path.join(self.log_directory, "packet_submitter.log"))
             logger.add_handler(file_handler)
-            assert False
+
         except Exception as e:
             await logger.exception("error creating AsycFileHandler")
             service_control.error = True

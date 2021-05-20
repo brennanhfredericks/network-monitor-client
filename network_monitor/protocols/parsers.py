@@ -3,7 +3,9 @@ import time
 import base64
 import asyncio
 import aiofiles
+import sys
 
+from aiologger.handlers.streams import AsyncStreamHandler
 from asyncio import Task
 from typing import Dict, Union, Any, Optional, List
 from functools import lru_cache
@@ -43,12 +45,16 @@ class __Parser:
         if not os.path.exists(output_directory):
             os.makedirs(output_directory)
 
-        out_format = Formatter(
-            "%(asctime)s:%(name)s:%(levelname)s:%(message)s"
+        stream_format = Formatter(
+            "%(asctime)s -:- %(name)s -:- %(levelname)s"
         )
-        self.__log = output_directory
-        self.__logger = Logger.with_default_handlers(
-            name=__name__, formatter=out_format)
+
+        logger = Logger(name=__name__)
+
+        # create handles
+        stream_handler = AsyncStreamHandler(
+            stream=sys.stderr, formatter=stream_format)
+        logger.add_handler(stream_handler)
 
     def set_async_loop(self, loop: asyncio.AbstractEventLoop):
         self.__loop = loop
@@ -65,9 +71,16 @@ class __Parser:
         """ return an empty protocol class used in comparison """
         try:
             res = self.__protocol_str_lookup[class_name]
-        except IndexError as e:
+        except KeyError as e:
             # add logging functionality
-            raise ValueError(f"{class_name} not a vaild protocol class name")
+            if self.__loop is not None:
+
+                self.__loop.create_task(
+                    self.std_logger(
+                        f"{class_name} not a vaild protocol class name"
+                    )
+                )
+
         else:
             return res
 
@@ -82,9 +95,16 @@ class __Parser:
         rev_protocol_str = self._reverse_protocols_str_lookup()
         try:
             res = rev_protocol_str[cls]
-        except IndexError as e:
+        except KeyError as e:
             # add logging functionality
-            raise ValueError(f"{cls} not register in lookup table")
+            if self.__loop is not None:
+
+                self.__loop.create_task(
+                    self.std_logger(
+                        f"{cls} not register in lookup table"
+                    )
+                )
+
         else:
             return res
 
