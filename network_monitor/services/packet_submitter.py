@@ -1,7 +1,7 @@
 
 import time
 import os
-
+import sys
 import json
 
 import aiohttp
@@ -14,12 +14,16 @@ from aiohttp import ClientSession
 
 from logging import Formatter
 from aiologger import Logger
+from aiologger.handlers.streams import AsyncStreamHandler
+from aiologger.handlers.files import AsyncFileHandler
 
 from asyncio import Task, Queue, CancelledError
 from aiofiles.threadpool import AsyncFileIO
 
 from network_monitor.filters import flatten_protocols
 from network_monitor.protocols import EnhancedJSONEncoder
+
+from .service_manager import Service_Control
 
 from typing import List, Any, Optional, Union, Dict
 
@@ -84,7 +88,8 @@ class Submitter(object):
 
     def _logs_available(self) -> List[str]:
         "os list dir"
-        return [f for f in os.listdir(self._log_dir) if f.endswith(".lsp")]
+        res = [f for f in os.listdir(self._log_dir) if f.endswith(".lsp")]
+        return res
 
     async def _clear_logs(self) -> None:
         """
@@ -95,24 +100,31 @@ class Submitter(object):
         # maybe added functionality to post file
         if logs:
             # load from disk
-            tasks = []
 
             # open tcp session
             async with ClientSession() as session:
+                # check if monitor server avalable
+                resp = await session.get(self.url)
+
+                if resp.status != 200:
+                    # server unavailable
+                    return
 
                 # iterate over all logs
                 for log in logs:
                     infile = os.path.join(self._log_dir, log)
 
-                    async with aiofiles.open(infile, "r") as fin:
-                        async for line in fin:
-                            data = json.loads(line)
-                            task = self._loop.create_task(
-                                self._post_to_server(data, session)
-                            )
-                            tasks.append(task)
                     try:
-                        await asyncio.gather(*tasks)
+                        async with aiofiles.open(infile, "r") as fin:
+                            tasks = []
+                            async for line in fin:
+                                data = json.loads(line)
+                                task = self._loop.create_task(
+                                    self._post_to_server(data, session)
+                                )
+                                tasks.append(task)
+
+                            await asyncio.gather(*tasks)
                     except (
                         aiohttp.ClientError,
                         aiohttp.http_exceptions.HttpProcessingError,
@@ -188,53 +200,76 @@ class Packet_Submitter(object):
 
     def __init__(
         self,
-        url: str,
-        log_dir: str,
-        retryinterval: int,
+        remote_metadata_storage: str,
+        local_metadata_storage: str,
+        log_directory: str,
+        retry_interval: int,
     ):
 
         # configure submitter that
         self._submitter: Submitter = Submitter(
-            url,
-            log_dir,
-            retryinterval=retryinterval
+            remote_metadata_storage,
+            local_metadata_storage,
+            retryinterval=retry_interval
         )
+
+        self.log_directory = log_directory
 
     def get_output_filename(self) -> str:
         return self._submitter.output_filename()
 
-    async def worker(self):
+    async def worker(self, service_control: Service_Control) -> None:
         # retrieve running loop
         loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
 
-        out_format = Formatter(
-            "%(asctime)s:%(name)s:%(levelname)s"
+        # could be used to inject other asynchronouse task
+        service_control.loop = loop
+
+        stream_format = Formatter(
+            "%(asctime)s -:- %(name)s -:- %(levelname)s -:- %(message)s"
         )
 
-        logger = Logger.with_default_handlers(
-            name=__name__,
-            formatter=out_format
-        )
+        logger = Logger(name=__name__)
 
-        # configure submitter logger
-        self._submitter.set_logger(logger)
+        # create handles
+        stream_handler = AsyncStreamHandler(
+            stream=sys.stderr, formatter=stream_format)
+        logger.add_handler(stream_handler)
 
-        # configure asynchronous loop
-        self._submitter.set_async_loop(loop)
+        try:
+            file_handler = AsyncFileHandler(
+                os.path.join(self.log_directory, "packet_submitter.log"))
+            logger.add_handler(file_handler)
 
-        while True:
-            try:
-                #s = time.monotonic()
-                # wait for processed data from the packer service queue
-                data: Dict[str, Dict[str, Union[str, int]]] = await self.processed_data_queue.get()
+        except Exception as e:
+            await logger.exception("error creating AsycFileHandler")
+            service_control.error = True
+            return
+        else:
 
-                await self._submitter.process(data)
+            # configure submitter logger
+            self._submitter.set_logger(logger)
 
-                self.processed_data_queue.task_done()
-                #print("packet parser time diff: ", time.monotonic()-s)
-            except CancelledError as e:
-                # clear internal buffer
-                await self._submitter.flush()
-                raise e
-            except Exception as e:
-                await logger.exception(f"An error occured in packet submitter service: {e}")
+            # configure asynchronous loop to add other task such as clearing old logs
+            self._submitter.set_async_loop(loop)
+            while service_control.sentinal:
+                print(time.monotonic())
+                try:
+                    #s = time.monotonic()
+                    # wait for processed data from the packer service queue
+                    data: Dict[str, Dict[str, Union[str, int]]] = await service_control.in_queue.get()
+                    await self._submitter.process(data)
+                    service_control.in_queue.task_done()
+                    #print("packet parser time diff: ", time.monotonic()-s)
+
+                except CancelledError as e:
+                    # clear internal buffer
+                    await logger.info("clearing internal buffer")
+                    await self._submitter.flush()
+                    raise e
+                except Exception as e:
+                    await logger.exception(f"An error occured in packet submitter service")
+            await logger.info("about exit packet parser")
+        finally:
+            # stop async loop to exit thread normally
+            loop.stop()

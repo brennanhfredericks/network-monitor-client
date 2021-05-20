@@ -103,6 +103,7 @@ class Interface_Listener(object):
         # used to initialize required things
         # specify the interface to lister on
         self.interface_name: str = interface_name
+        self.log_directory: str = log_directory
 
     # if operation is not true asynchronous hence the need to run in a seperate thread
     def worker(self, service_control: Service_Control) -> None:
@@ -119,12 +120,19 @@ class Interface_Listener(object):
         stream_handler = logging.StreamHandler(sys.stderr)
         stream_handler.setFormatter(stream_format)
         logger.addHandler(stream_handler)
+        try:
+            file_handler = logging.FileHandler(
+                filename=os.path.join(self.log_directory, "interface_listener.log"))
+            logger.addHandler(file_handler)
+        except Exception:
+            # permission error
+            service_control.error = True
+            logger.exception("unable to create logging out file")
 
-        file_handler = logging.FileHandler(
-            filename=f"./logs/Logging/interface_listener.log")
-        logger.addHandler(file_handler)
+            return
 
         # try to open low level socket
+
         try:
 
             with InterfaceContextManager(self.interface_name) as interface:
@@ -153,6 +161,6 @@ class Interface_Listener(object):
             service_control.error = True
 
             logger.exception(
-                f"An exception occured opening a low level socket")
+                "An exception occured opening a low level socket")
 
         # thread exit normally
