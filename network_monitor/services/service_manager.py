@@ -1,6 +1,7 @@
 import time
 import sys
 import asyncio
+import queue
 import threading
 
 from aiologger import Logger
@@ -13,12 +14,14 @@ from typing import Optional, Dict, Any, Tuple, Union
 
 
 @dataclass
-class Thread_Control(object):
-
-    handler: Optional[threading.Thread] = None
+class Service_Control(object):
+    name: str
+    thread: Optional[threading.Thread] = None
     sentinal: bool = True
     loop: Optional[asyncio.AbstractEventLoop] = None
-    error_state: Optional[bool] = None
+    in_queue: Optional[queue.Queue] = None
+    out_queue: Optional[queue.Queue] = None
+    error: Optional[bool] = None
 
 
 class Data_Queue_Identifier(Enum):

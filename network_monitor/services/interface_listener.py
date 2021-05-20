@@ -1,17 +1,16 @@
 import ctypes
 
 import os
-import threading
+
 import time
 import sys
-import asyncio
-from socket import socket, AF_PACKET, SOCK_RAW, htons
-from asyncio import Queue
 
-from logging import Formatter
-from aiologger import Logger
-from typing import Optional, List, Dict, Any, Tuple
-from .service_manager import Thread_Control
+from socket import socket, AF_PACKET, SOCK_RAW, htons
+
+import logging
+
+from typing import List, Any, Tuple
+from .service_manager import Service_Control
 
 # used to manipulate file descriptor for unix
 
@@ -100,51 +99,60 @@ class Interface_Listener(object):
     # maximum ethernet frame size is 1522 bytes
     BUFFER_SIZE: int = 65565
 
-    def __init__(self, interface_name: str, raw_data_queue: Queue) -> None:
+    def __init__(self, interface_name: str, log_directory: str) -> None:
         # used to initialize required things
         # specify the interface to lister on
         self.interface_name: str = interface_name
 
-        # raw ethernet packects put on to queue for processing
-        self.raw_data_queue: Queue = raw_data_queue
-
-    async def read(self, interface: socket) -> Tuple[bytes, Tuple[str, int, int, int, bytes]]:
-
-        return interface.recvfrom(self.BUFFER_SIZE)
-
     # if operation is not true asynchronous hence the need to run in a seperate thread
-    async def worker(self, control: Thread_Control) -> None:
-        out_format = Formatter(
-            "%(asctime)s:%(name)s:%(levelname)s"
+    def worker(self, service_control: Service_Control) -> None:
+
+        stream_format = logging.Formatter(
+            "%(asctime)s -:- %(name)s -:- %(levelname)s -:- %(message)s"
         )
 
-        logger = Logger.with_default_handlers(
-            name="interface_blocking_thread",
-            formatter=out_format
-        )
-        loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        # configure logger
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+
+        # add stream handler
+        stream_handler = logging.StreamHandler(sys.stderr)
+        stream_handler.setFormatter(stream_format)
+        logger.addHandler(stream_handler)
+
+        file_handler = logging.FileHandler(
+            filename=f"./logs/Logging/interface_listener.log")
+        logger.addHandler(file_handler)
+
         # try to open low level socket
         try:
 
             with InterfaceContextManager(self.interface_name) as interface:
-                control.error_state = False
-                while control.sentinal:
+                # no error occured
+                service_control.error = False
+
+                while service_control.sentinal:
                     # s = time.monotonic()
                     try:
                         #
-                        packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = await self.read(interface)
+                        packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = interface.recvfrom(
+                            self.BUFFER_SIZE)
+                        # time the packed got sniffed
                         sniffed_timestamp: float = time.time()
-                        await self.raw_data_queue.put((sniffed_timestamp, packet))
 
-                    except Exception as e:
-                        # add logging functionality here
-                        await logger.exception(f"listener receiving data from socket {e}")
-                    # print("interface listener time diff: ", time.monotonic()-s)
-        except Exception as e:
-            control.error_state = True
+                        # add raw to be processed by other service
+                        service_control.out_queue.put(
+                            (sniffed_timestamp, packet)
+                        )
 
-            await logger.exception(f"error occured trying to open level socket {e}")
+                    except Exception:
+                        logger.exception(
+                            f"An exception occured trying to read data from {self.interface_name}")
 
-            # stops the threaded asynchronous loop and allow the thread target function to terminate normally
-            # if the event loop is never stopped the thread will never terminate
-            loop.stop()
+        except Exception:
+            service_control.error = True
+
+            logger.exception(
+                f"An exception occured opening a low level socket")
+
+        # thread exit normally

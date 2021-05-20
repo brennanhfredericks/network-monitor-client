@@ -1,3 +1,23 @@
+from typing import Optional, Dict, Callable, Awaitable, Coroutine, List
+from aiologger import Logger
+from logging import Formatter
+from network_monitor.protocols import Protocol_Parser
+from network_monitor.configurations import DevConfig
+from network_monitor.services import (
+    Service_Type,
+    Service_Identifier,
+    Service_Control,
+    Data_Queue_Identifier,
+    Interface_Listener,
+    Packet_Parser,
+    Packet_Submitter,
+    Packet_Filter
+)
+from network_monitor import (
+    generate_configuration_template,
+    load_config_from_file,
+    Service_Manager,
+)
 import netifaces
 import argparse
 import asyncio
@@ -5,28 +25,9 @@ import os
 import signal
 import functools
 import threading
+import queue
+import logging
 
-from network_monitor import (
-    generate_configuration_template,
-    load_config_from_file,
-    Service_Manager,
-)
-from network_monitor.services import (
-    Service_Type,
-    Service_Identifier,
-    Thread_Control,
-    Data_Queue_Identifier,
-    Interface_Listener,
-    Packet_Parser,
-    Packet_Submitter,
-    Packet_Filter
-)
-from network_monitor.configurations import DevConfig
-
-from network_monitor.protocols import Protocol_Parser
-from logging import Formatter
-from aiologger import Logger
-from typing import Optional, Dict, Callable, Awaitable, Coroutine, List
 
 # execute in its own thread
 
@@ -54,55 +55,40 @@ async def aware_worker(interface_name: str,
     await asyncio.gather(listener_service_task, return_exceptions=False)
 
 
-def threaded_event_loop(interface_name: str,
-                        queue: asyncio.Queue,
-                        control: Thread_Control):
+def threaded_packet_submitter_service(service_control: Service_Control, **kwargs) -> threading.Thread:
 
-    # create a new event loop and add the interfce listener service to the loop.
-    # the service is async aware however still operation in a blocking manner
+    ...
 
-    # can always later use new eventloop to peform other corotines.
-    # could also use introspection to gather current task or all tasks in provided loop
-    # asyncio.run_coroutine_threadsafe to add corotines between threads
-    asyncio.run(
-        aware_worker(
-            interface_name, queue, control)
+
+def threaded_interface_listener_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> threading.Thread:
+
+    # retrieve kwargs
+    interface_name = kwargs.pop("InterfaceName")
+    log_directory = kwargs.pop("LogDirectory")
+
+    # configure interface and log directory for interface listener
+    interface_listener: Interface_Listener = Interface_Listener(
+        interface_name,
+        log_directory
     )
 
-
-async def init_blocking_services(app_config: DevConfig, services_manager: Service_Manager) -> None:
-    # setup service control mechanicm
-    interface_listener_service_control: Thread_Control = Thread_Control()
+    # configure interface listener output queue
+    service_control.out_queue = queue.Queue()
 
     # configure service thread
-    interface_listener_service_control.handler = threading.Thread(
+    service_control.thread = threading.Thread(
         group=None,
-        target=threaded_event_loop,
+        target=interface_listener.worker,
         name="interface-listener-service",
         args=(
-            app_config.InterfaceName,
-            services_manager.get_queue(Data_Queue_Identifier.Raw_Data),
-            interface_listener_service_control
+            service_control,
         ),
         daemon=False
     )
 
     # add thread to services manager and start
     services_manager.add_thread(
-        "interface-listener-service", interface_listener_service_control)
-
-    # wait a moment to check if service started in thread
-    await asyncio.sleep(0.1)
-
-    # check  if any error occured
-    if interface_listener_service_control.error_state:
-        print("error occured in thread")
-        # stop the thread that the error occured in
-        services_manager.stop_thread("interface-listener-service")
-
-        # for now force application to exit by throwing and exception. this exeception in captured in the main function.
-        # raise ValueError(
-        #     "Unable to start interface listener most likely due to insufficient privileges")
+        "interface-listener-service", service_control)
 
 
 async def app_status(services_manager: Service_Manager, update_interval: int = 5):
@@ -114,17 +100,20 @@ async def app_status(services_manager: Service_Manager, update_interval: int = 5
     await services_manager.stop_all_services()
 
 
-async def packet_parser_service(app_config: DevConfig, services_manager: Service_Manager) -> asyncio.Task:
-
+async def asynchronous_packet_parser_service(service_control: Service_Control, **kwargs) -> asyncio.Task:
     # configure packet filter. Need implement FilterSubmissionTraffic, only a issue if the application network packets need to be routed via
     # the listening interface to reach the monitor server.
+    filter_submission_traffic = kwargs.pop("FilterSubmissionTraffic")
+    filters = kwargs.pop("Filters")
 
     # create a new Packet_Filter. The Packet_Filter holds all filters and applies them to the captured packets
     packet_filter: Packet_Filter = Packet_Filter(
-        app_config.FilterSubmissionTraffic)
+        filter_submission_traffic)
 
     # register all filters define in the configuration file
-    packet_filter.register(app_config.Filters)
+    packet_filter.register(filters)
+
+    service_control.out_queue = queue.Q
 
     # configure packet parser service
     packet_parser: Packet_Parser = Packet_Parser(
@@ -138,11 +127,10 @@ async def packet_parser_service(app_config: DevConfig, services_manager: Service
     services_manager.add_service(
         Service_Type.Consumer, Service_Identifier.Packet_Parser_Service, packet_parser_service_task)
 
-    return packet_parser_service_task
-
 
 async def packet_submitter_service(app_config: DevConfig, services_manager: Service_Manager) -> asyncio.Task:
     # configure packet submitter service
+    app_config.InterfaceName
     packet_submitter: Packet_Submitter = Packet_Submitter(
         services_manager.get_queue(Data_Queue_Identifier.Processed_Data),
         app_config.RemoteMetadataStorage,
@@ -196,13 +184,13 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
         signal.SIGINT, functools.partial(signal_handler))
 
     # configure data queues
-    raw_queue: asyncio.Queue = asyncio.Queue()
-    processed_queue: asyncio.Queue = asyncio.Queue()
+    # raw_queue: asyncio.Queue = asyncio.Queue()
+    # processed_queue: asyncio.Queue = asyncio.Queue()
 
-    services_manager.add_queue(
-        raw_queue, Data_Queue_Identifier.Raw_Data)
-    services_manager.add_queue(
-        processed_queue, Data_Queue_Identifier.Processed_Data)
+    # services_manager.add_queue(
+    #     raw_queue, Data_Queue_Identifier.Raw_Data)
+    # services_manager.add_queue(
+    #     processed_queue, Data_Queue_Identifier.Processed_Data)
 
     # wait for producer service to start before trying to start any consumer services
     await main_loop.create_task(init_blocking_services(app_config, services_manager))
@@ -290,6 +278,8 @@ def main(args: argparse.Namespace) -> int:
             loop.run_forever()
         finally:
             loop.close()
+            # flush out all logger handles
+            logging.shutdown()
             print("application closed")
     # exit_succes
     return 0

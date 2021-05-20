@@ -162,12 +162,12 @@ class Packet_Parser(object):
 
     def __init__(
         self,
-        raw_data_queue: Queue,
+        raw_queue: Queue,
         processed_queue: Queue,
         packet_filter: Optional[Packet_Filter] = None,
     ) -> None:
 
-        self.raw_data_queue = raw_data_queue
+        self.raw_queue = raw_queue
         self.processed_data_queue = processed_queue
 
         if packet_filter is None:
@@ -185,7 +185,7 @@ class Packet_Parser(object):
 
         while True:
             try:
-                sniffed_timestamp, (raw_bytes, address) = await self.raw_data_queue.get()
+                sniffed_timestamp, (raw_bytes, address) = await self.raw_queue.get()
 
                 # do processing with data
                 af_packet: AF_Packet = AF_Packet(address)
@@ -201,9 +201,9 @@ class Packet_Parser(object):
                     # check whether WIFI packets are different from ethernet packets
 
                     out_packet = Packet_802_3(raw_bytes)
-
+                # print(out_packet.Identifier)
                 # notify queued item processed
-                self.raw_data_queue.task_done()
+                self.raw_queue.task_done()
 
                 # implement packet filter here before adding data to output queue
                 packet: Optional[Dict[str, Dict[str, Union[str, int, float]]]] = self.packet_filter.apply(
@@ -219,7 +219,8 @@ class Packet_Parser(object):
                     packet["Info"] = info
 
                     await self.processed_data_queue.put(packet)
-                    await asyncio.sleep(0.01)
+
+                # await asyncio.sleep(0.001)
                 # implement stream holder here
                 #print("packet parser time diff: ", time.monotonic()-s)
             except CancelledError as e:
