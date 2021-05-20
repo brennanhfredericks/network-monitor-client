@@ -188,12 +188,10 @@ class Packet_Submitter(object):
 
     def __init__(
         self,
-        processed_queue: Queue,
         url: str,
         log_dir: str,
         retryinterval: int,
     ):
-        self.processed_data_queue: Queue = processed_queue
 
         # configure submitter that
         self._submitter: Submitter = Submitter(

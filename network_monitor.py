@@ -55,9 +55,26 @@ async def aware_worker(interface_name: str,
     await asyncio.gather(listener_service_task, return_exceptions=False)
 
 
-def threaded_packet_submitter_service(service_control: Service_Control, **kwargs) -> threading.Thread:
+def threaded_packet_submitter_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> threading.Thread:
 
-    ...
+    # retrieve args
+    remote_metadata_storage: str = kwargs.pop("RemoteMetadataStorage")
+    local_metadata_storage: str = kwargs.pop("LocalMetadataStorage")
+    resubmission_interval: int = kwargs.pop("ResubmissionInterval")
+    # configure packet submitter service
+    packet_submitter: Packet_Submitter = Packet_Submitter(
+        services_manager.get_queue(Data_Queue_Identifier.Processed_Data),
+        remote_metadata_storage,
+        local_metadata_storage,
+        resubmission_interval
+    )
+
+    packet_submitter_service_task: asyncio.Task = asyncio.create_task(
+        packet_submitter.worker(), name="packet=submitter-service-task"
+    )
+
+    services_manager.add_service(
+        Service_Type.Consumer, Service_Identifier.Packet_Submitter_Service, packet_submitter_service_task)
 
 
 def threaded_interface_listener_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> threading.Thread:
@@ -126,26 +143,6 @@ async def asynchronous_packet_parser_service(service_control: Service_Control, *
     # create reference - consumes and produces data
     services_manager.add_service(
         Service_Type.Consumer, Service_Identifier.Packet_Parser_Service, packet_parser_service_task)
-
-
-async def packet_submitter_service(app_config: DevConfig, services_manager: Service_Manager) -> asyncio.Task:
-    # configure packet submitter service
-    app_config.InterfaceName
-    packet_submitter: Packet_Submitter = Packet_Submitter(
-        services_manager.get_queue(Data_Queue_Identifier.Processed_Data),
-        app_config.RemoteMetadataStorage,
-        app_config.local_metadata_storage_path(),
-        app_config.ResubmissionInterval
-    )
-
-    packet_submitter_service_task: asyncio.Task = asyncio.create_task(
-        packet_submitter.worker(), name="packet=submitter-service-task"
-    )
-
-    services_manager.add_service(
-        Service_Type.Consumer, Service_Identifier.Packet_Submitter_Service, packet_submitter_service_task)
-
-    return packet_submitter_service_task
 
 
 async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> None:

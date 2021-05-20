@@ -18,9 +18,9 @@ class BaseConfig:
         self.BaseLogDirectory: str = base_log_directory
 
         # create base directories
-        os.makedirs(self.local_metadata_storage_path(), exist_ok=True)
-        os.makedirs(self.log_storage_path(), exist_ok=True)
-        os.makedirs(self.undefined_storage_path(), exist_ok=True)
+        os.makedirs(self.LocalMetadataStorage, exist_ok=True)
+        os.makedirs(self.GeneralLogStorage, exist_ok=True)
+        os.makedirs(self.UndefinedProtocolStorage, exist_ok=True)
 
         self.InterfaceName: str = "eth0"
         self.RemoteMetadataStorage: str = "http://localhost:5050/packets"
@@ -28,19 +28,22 @@ class BaseConfig:
         self.FilterSubmissionTraffic: bool = True
         self.Filters: List[Filter] = []
 
-    def local_metadata_storage_path(self) -> str:
+    @property
+    def LocalMetadataStorage(self) -> str:
         """
             return path where processed packed metadata will be stored
         """
         return os.path.join(self.BaseLogDirectory, self.OfflineLogEndpoint)
 
-    def log_storage_path(self) -> str:
+    @property
+    def GeneralLogStorage(self) -> str:
         """
             return path where the logger will store it's data
         """
         return os.path.join(self.BaseLogDirectory, self.AppLogEndpoint)
 
-    def undefined_storage_path(self) -> str:
+    @property
+    def UndefinedProtocolStorage(self) -> str:
         """
             return path where the extracter service will store the raw bytes for the undefined protocols
         """
