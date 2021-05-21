@@ -269,4 +269,3 @@ class Packet_Submitter(object):
                     raise e
                 except Exception as e:
                     await logger.exception(f"An error occured in packet submitter service")
-            await logger.info("about exit packet parser")

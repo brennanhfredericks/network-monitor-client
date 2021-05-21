@@ -109,19 +109,11 @@ async def threaded_interface_listener_service(services_manager: Service_Manager,
         Service_Identifier.Interface_Listener_Service, service_control)
 
 
-async def application_status(services_manager: Service_Manager, update_interval: int = 5):
-    while services_manager.run:
-        print("application status:")
-        await services_manager.status()
-        await asyncio.sleep(update_interval)
-
-    # close application
-    await services_manager.close_application()
-
-
-async def asynchronous_packet_parser_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> asyncio.Task:
+async def asynchronous_packet_parser_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> None:
     # configure packet filter. Need implement FilterSubmissionTraffic, only a issue if the application network packets need to be routed via
     # the listening interface to reach the monitor server.
+    loop = asyncio.get_running_loop()
+
     filter_submission_traffic = kwargs.pop("FilterSubmissionTraffic")
     filters = kwargs.pop("Filters")
 
@@ -132,19 +124,35 @@ async def asynchronous_packet_parser_service(services_manager: Service_Manager, 
     # register all filters define in the configuration file
     packet_filter.register(filters)
 
+    # configure service control
+    service_control.in_queue = services_manager.retrieve_queue_reference(
+        Data_Queue_Identifier.Raw_Data)
+    service_control.out_queue = services_manager.retrieve_queue_reference(
+        Data_Queue_Identifier.Processed_Data)
     # retrieve reference for queues from thread
 
-    # configure packet parser service
-    packet_parser: Packet_Parser = Packet_Parser(
-        services_manager.get_queue(Data_Queue_Identifier.Raw_Data), services_manager.get_queue(Data_Queue_Identifier.Processed_Data), packet_filter)
+    packet_parser = Packet_Parser(packet_filter)
 
     # create asynchronous service task
-    packet_parser_service_task: asyncio.Task = asyncio.create_task(
+    packet_parser_service_task: asyncio.Task = loop.create_task(
         packet_parser.worker(), name="packet-parser-service-task")
 
-    # create reference - consumes and produces data
-    services_manager.add_service(
-        Service_Type.Consumer, Service_Identifier.Packet_Parser_Service, packet_parser_service_task)
+    # add task reference
+    service_control.task = packet_parser_service_task
+
+    # add asynchronous service
+    services_manager.add_local_service(
+        Service_Identifier.Packet_Parser_Service, service_control)
+
+
+async def application_status(services_manager: Service_Manager, update_interval: int = 5):
+    while not services_manager.terminate:
+        print("application status:")
+        await services_manager.status()
+        await asyncio.sleep(update_interval)
+
+    # close application
+    await services_manager.close_application()
 
 
 async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> int:
@@ -171,7 +179,7 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
         # use parent scope variable
         print("application starting exist process")
         # exit application status coroutine blocking loop, and call close application method
-        services_manager.run = False
+        services_manager.terminate = True
 
     # ctrl+z and ctrl+c signal handlers
     main_loop.add_signal_handler(
@@ -188,7 +196,7 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
         GeneralLogStorage=app_config.GeneralLogStorage
     )
 
-    #  wait and check if threads start successfully
+    #  wait and check if threads start successfully. need the sleep to give the os time to spawn new thread
     await asyncio.sleep(0.1)
     # check if threads started succesfull
     if il_service_control.error:
@@ -206,30 +214,30 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
         ResubmissionInterval=app_config.ResubmissionInterval,
         GeneralLogStorage=app_config.GeneralLogStorage)
 
-    #  wait and check if threads start successfully
+    #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
     await asyncio.sleep(0.1)
     if ps_service_control.error:
         print("error in packet submitter service thread")
         services_manager.close_threads()
         return EXIT_FAILURE
 
-    # configure logger and output directory Protocol Parser
+    # configure logger and output directory for Protocol Parser
     Protocol_Parser.set_output_directory(app_config.UndefinedProtocolStorage)
     Protocol_Parser.set_async_loop(main_loop)
 
-    # packet_parser_service_task = await main_loop.create_task(
-    #     packet_parser_service(app_config, services_manager))
+    # configure and packet parser service
+    pp_services_control = Service_Control("packet parser")
+    await asynchronous_packet_parser_service(services_manager, pp_services_control, Filters=app_config.Filters, FilterSubmissionTraffic=app_config.FilterSubmissionTraffic)
 
-    # packet_submitter_service_task = await main_loop.create_task(
-    #     packet_submitter_service(app_config, services_manager))
+    # no need to wait for error, since the service in running in the main loop
 
-    # services_manager.run = True
-    # app_status_task: asyncio.Task = main_loop.create_task(
-    #     app_status(services_manager))
-    # # block until signal shutdown
+    # block until signal shutdown
+    services_manager.terminate = False
+    update_task: asyncio.Task = main_loop.create_task(
+        application_status(services_manager))
 
-    # await asyncio.gather(app_status_task, packet_parser_service_task, packet_submitter_service_task, return_exceptions=True)
-
+    await asyncio.gather(update_task, return_exceptions=True)
+    print(asyncio.all_tasks())
     # use introspection to retrieve all set of not yet finished Task objects run by the loop.
     # if len(asyncio.all_tasks(main_loop)) > 1:
     #     # wait for other tasks to complete
@@ -295,10 +303,11 @@ def main(args: argparse.Namespace) -> int:
             # run until loop.stop() is call
             loop.run_until_complete(init_method)
         finally:
-            loop.close()
-            # flush out all logger handles
-
-            print("application closed")
+            # loop.close()
+            # flush out all logger
+            ...
+    print(asyncio.all_tasks(loop))
+    print("application closed")
     # exit_succes
     logging.shutdown()
     return EXIT_SUCCESS

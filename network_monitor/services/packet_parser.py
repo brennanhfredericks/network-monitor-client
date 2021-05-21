@@ -1,16 +1,18 @@
 import time
 import json
 import asyncio
+import sys
+from asyncio import CancelledError
 
-from asyncio import Queue, CancelledError
-
-from typing import Dict, Any, Union, List, Optional
+from typing import Dict, Any, Union, List, Optional, Tuple
 from dataclasses import dataclass
 
 from ..protocols import AF_Packet, Packet_802_3, Packet_802_2, Protocol_Parser
 from ..filters.deep_walker import flatten_protocols
+from .service_manager import Service_Control
 from logging import Formatter
 from aiologger import Logger
+from aiologger.handlers.streams import AsyncStreamHandler
 """
     Packet Filter
 
@@ -162,52 +164,58 @@ class Packet_Parser(object):
 
     def __init__(
         self,
-        raw_queue: Queue,
-        processed_queue: Queue,
         packet_filter: Optional[Packet_Filter] = None,
     ) -> None:
-
-        self.raw_queue = raw_queue
-        self.processed_data_queue = processed_queue
 
         if packet_filter is None:
             self.packet_filter = Packet_Filter()
         else:
             self.packet_filter = packet_filter
 
-    async def worker(self) -> None:
-        out_format = Formatter(
-            "%(asctime)s:%(name)s:%(levelname)s"
+    async def _process_packet(self, af_packet: AF_Packet, raw_bytes: bytes) -> None:
+
+        out_packet: Optional[Union[Packet_802_3, Packet_802_2]] = None
+
+        # check for protocol encapsulation based on the ethernet protocol number
+        if af_packet.Ethernet_Protocol_Number >= 0 and af_packet.Ethernet_Protocol_Number <= 1500:
+
+            # logical link control (LLC) Numbers
+            out_packet = Packet_802_2(raw_bytes)
+        else:
+            # check whether WIFI packets are different from ethernet packets
+
+            out_packet = Packet_802_3(raw_bytes)
+
+        # Tuple[AF_Packet, Union[Packet_802_2, Packet_802_3]]
+            # implement packet filter here before adding data to output queue
+
+    async def worker(self, service_control: Service_Control) -> None:
+        stream_format = Formatter(
+            "%(asctime)s -:- %(name)s -:- %(levelname)s"
         )
 
-        logger = Logger.with_default_handlers(
-            name=__name__, formatter=out_format)
+        logger = Logger(
+            name=__name__
+        )
 
-        while True:
+        stream_handler = AsyncStreamHandler(
+            stream=sys.stderr, formatter=stream_format)
+        logger.add_handler(stream_handler)
+
+        while service_control.sentinal:
             try:
-                sniffed_timestamp, (raw_bytes, address) = await self.raw_queue.get()
+                sniffed_timestamp, (raw_bytes, address) = await service_control.in_queue.get()
 
-                # do processing with data
+                # process raw packet
+                await self._process_packet(sniffed_timestamp, address, raw_bytes)
+
+                service_control.in_queue.task_done()
                 af_packet: AF_Packet = AF_Packet(address)
 
-                out_packet: Optional[Union[Packet_802_3, Packet_802_2]] = None
-
-                # check for protocol encapsulation based on the ethernet protocol number
-                if af_packet.Ethernet_Protocol_Number >= 0 and af_packet.Ethernet_Protocol_Number <= 1500:
-
-                    # logical link control (LLC) Numbers
-                    out_packet = Packet_802_2(raw_bytes)
-                else:
-                    # check whether WIFI packets are different from ethernet packets
-
-                    out_packet = Packet_802_3(raw_bytes)
-                # print(out_packet.Identifier)
-                # notify queued item processed
-                self.raw_queue.task_done()
-
-                # implement packet filter here before adding data to output queue
+                # this should be move outside the worker. packet parser process the raw bytes into and object.
+                # register callback to be called on object when processed. these callback could be different functionality such as pack filtering and stream tracking
                 packet: Optional[Dict[str, Dict[str, Union[str, int, float]]]] = self.packet_filter.apply(
-                    af_packet, out_packet)
+                    af_packet, raw_bytes)
 
                 if packet is not None:
                     processed_timestamp = time.time()
@@ -218,14 +226,11 @@ class Packet_Parser(object):
                     }
                     packet["Info"] = info
 
-                    await self.processed_data_queue.put(packet)
+                    await service_control.out_queue.put(packet)
 
-                # await asyncio.sleep(0.001)
-                # implement stream holder here
-                #print("packet parser time diff: ", time.monotonic()-s)
             except CancelledError as e:
                 # perform any operation before shut down here
-                # print("packet parser service cancelled", e)
+                await logger.info("packet parser service has been cancelled")
                 raise e
             except Exception as e:
                 await logger.exception(f"other exception in packer_parser: {e}")

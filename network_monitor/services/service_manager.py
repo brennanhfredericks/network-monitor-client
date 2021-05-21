@@ -53,7 +53,7 @@ class Service_Manager(object):
                                              Service_Control] = OrderedDict()
         self._main_loop_services: OrderedDict[Service_Identifier,
                                               Service_Control] = OrderedDict()
-        self.run: Optional[bool] = None
+        self.terminate: Optional[bool] = None
         self._logger = Logger()
 
         stream_format = Formatter(
@@ -117,7 +117,6 @@ class Service_Manager(object):
         service_control.sentinal = False
         service_control.task.cancel()
 
-        self._main_loop_services.pop(service_identifier)
         print(f"asynchronous {service_identifier} has been stopped")
 
     def close_threads(self) -> None:
@@ -130,23 +129,20 @@ class Service_Manager(object):
 
         # stop listener service
 
+        self.stop_threaded_service(
+            Service_Identifier.Interface_Listener_Service)
+
+        # wait for packet service to clear the raw data queue
+        self.retrieve_queue_reference(Data_Queue_Identifier.Raw_Data).join()
+
         # stop packet parser service
+        self.stop_threaded_service(Service_Identifier.Packet_Parser_Service)
+
+        # wait for packet submiiter to clear the raw data queue
+        self.retrieve_queue_reference(
+            Data_Queue_Identifier.Processed_Data).join()
 
         # stop packet submitter service
-
-        # stop all service that produces data
-        # for k, v in self._services[Service_Type.Producer].items():
-        #     await self._logger.info(f"Requesting producer {k} service to stop")
-        #     v.cancel()
-
-        # # wait for all queue to be cleared by the consumer services
-        # for k, v in self._data_queues.items():
-        #     await self._logger.info(f"Waiting for queue {k} to clear")
-        #     await v.join()
-
-        # # stop all service that consume data
-        # for k, v in self._services[Service_Type.Consumer].items():
-        #     await self._logger.info(f"Requesting consumer {k} service to stop")
-        #     v.cancel()
+        self.stop_local_service(Service_Identifier.Packet_Submitter_Service)
 
         await self._logger.info("all services have been stopped")
