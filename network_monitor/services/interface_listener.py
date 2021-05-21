@@ -1,13 +1,16 @@
 import ctypes
 
 import os
-
+import fcntl
 import time
 import sys
 
 from socket import socket, AF_PACKET, SOCK_RAW, htons
 
-import logging
+from aiologger import Logger
+from aiologger.handlers.files import AsyncFileHandler
+from aiologger.handlers.streams import AsyncStreamHandler
+
 
 from typing import List, Any, Tuple
 from .service_manager import Service_Control
@@ -37,7 +40,9 @@ class InterfaceContextManager(object):
     """
 
     def __init__(self, interface_name: str) -> None:
+        self.interface_name = interface_name
 
+    def get_socket(self) -> socket:
         # linux os
         if os.name == "posix":
             import fcntl  # posix-only, use to manipulate file describtor
@@ -50,7 +55,7 @@ class InterfaceContextManager(object):
             # sock.setblocking(False)
             ifr: ifreq = ifreq()
             # set interface name
-            ifr.ifr_ifrn = interface_name.encode("utf-8")
+            ifr.ifr_ifrn = self.interface_name.encode("utf-8")
             # get active flags for interface
             fcntl.ioctl(sock.fileno(), FLAGS.SIOCGIFFLAGS, ifr)
 
@@ -61,38 +66,25 @@ class InterfaceContextManager(object):
             ifr.ifr_flags |= FLAGS.IFF_PROMISC
             # updated flags
             fcntl.ioctl(sock.fileno(), FLAGS.SIOCSIFFLAGS, ifr)
-
-        # windows os
-        elif os.name == "nt":
-            raise NotImplemented
-            # test to see if working
-            # self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
-            # raise ValueError(f"low level interface for Windows operating system not implemented yet")
-        # other os
         else:
-            raise ValueError(
-                f"low level interface not implemented for {os.name} operating system"
-            )
+            raise ValueError("posix only")
 
         self._llsocket: socket = sock
+        return self._llsocket
+
+    def close(self) -> None:
+        # linux
+        # remove promiscuous flaf
+        self._ifr.ifr_flags ^= FLAGS.IFF_PROMISC
+        # update interface flags
+        fcntl.ioctl(self._llsocket, FLAGS.SIOCSIFFLAGS, self._ifr)
+        self._llsocket.close()
 
     def __enter__(self) -> socket:
         return self._llsocket
 
     def __exit__(self, *exc) -> None:
-        # linux
-        if os.name == "posix":
-            import fcntl
-
-            # remove promiscuous flaf
-            self._ifr.ifr_flags ^= FLAGS.IFF_PROMISC
-
-            # update interface flags
-            fcntl.ioctl(self._llsocket, FLAGS.SIOCSIFFLAGS, self._ifr)
-        # windows
-        elif os.name == "nt":
-            # self._llsocket.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
-            ...
+        self.close()
 
 
 class Interface_Listener(object):
@@ -107,60 +99,58 @@ class Interface_Listener(object):
 
     # if operation is not true asynchronous hence the need to run in a seperate thread
     async def worker(self, service_control: Service_Control) -> None:
-
-        stream_format = logging.Formatter(
-            "%(asctime)s -:- %(name)s -:- %(levelname)s -:- %(message)s"
-        )
-
         # configure logger
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.DEBUG)
+        logger = Logger(name=__name__)
 
         # add stream handler
-        stream_handler = logging.StreamHandler(sys.stderr)
-        stream_handler.setFormatter(stream_format)
-        logger.addHandler(stream_handler)
+        stream_handler = AsyncStreamHandler(stream=sys.stderr)
+        logger.add_handler(stream_handler)
+
         try:
-            file_handler = logging.FileHandler(
+            file_handler = AsyncFileHandler(
                 filename=os.path.join(self.log_directory, "interface_listener.log"))
-            logger.addHandler(file_handler)
-        except Exception:
+            logger.add_handler(file_handler)
+        except Exception as e:
             # permission error
             service_control.error = True
-            logger.exception("unable to create logging out file")
-
+            await logger.exception(
+                f"Unable to create log file for interface listener service: {e}")
             return
 
         # try to open low level socket
-
         try:
+            icm = InterfaceContextManager(
+                self.interface_name
+            )
+            pm_socket = icm.get_socket()
 
-            with InterfaceContextManager(self.interface_name) as interface:
-                # no error occured
-                service_control.error = False
-
-                while service_control.sentinal:
-                    # s = time.monotonic()
-                    try:
-                        #
-                        packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = interface.recvfrom(
-                            self.BUFFER_SIZE)
-                        # time the packed got sniffed
-                        sniffed_timestamp: float = time.time()
-
-                        # add raw to be processed by other service
-                        await service_control.out_queue.put(
-                            (sniffed_timestamp, packet)
-                        )
-
-                    except Exception:
-                        logger.exception(
-                            f"An exception occured trying to read data from {self.interface_name}")
-
-        except Exception:
+        except Exception as e:
             service_control.error = True
+            await logger.exception(
+                f"Unable open a low level socket: {e}"
+            )
 
-            logger.exception(
-                "An exception occured opening a low level socket")
+        else:
+            service_control.error = False
 
-        # thread exit normally
+            while service_control.sentinal:
+                # s = time.monotonic()
+                try:
+                    #
+                    packet: Tuple[bytes, Tuple[str, int, int, int, bytes]] = pm_socket.recvfrom(
+                        self.BUFFER_SIZE)
+                    # time the packed got sniffed
+                    sniffed_timestamp: float = time.time()
+
+                    # add raw to be processed by other service
+                    await service_control.out_queue.put(
+                        (sniffed_timestamp, packet)
+                    )
+
+                except Exception:
+                    await logger.exception(
+                        f"An exception occured trying to read data from {self.interface_name}")
+        finally:
+
+            if not service_control.error:
+                pm_socket.close()

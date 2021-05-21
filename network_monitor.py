@@ -209,7 +209,7 @@ async def application(interface_name: Optional[str] = None, configuration_file: 
     # check if threads started succesfull
     if il_service_control.error:
         print("error in interface listener thread")
-        services_manager.close_threads()
+        services_manager.stop_all_service()
         return EXIT_FAILURE
 
     # # start packet submitter service
