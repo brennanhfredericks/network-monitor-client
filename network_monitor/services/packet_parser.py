@@ -204,6 +204,7 @@ class Packet_Parser(object):
 
         while service_control.sentinal:
             try:
+                print(service_control.in_queue)
                 sniffed_timestamp, (raw_bytes, address) = await service_control.in_queue.get()
 
                 # process raw packet

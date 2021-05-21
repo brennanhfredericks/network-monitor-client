@@ -135,7 +135,7 @@ async def asynchronous_packet_parser_service(services_manager: Service_Manager, 
 
     # create asynchronous service task
     packet_parser_service_task: asyncio.Task = loop.create_task(
-        packet_parser.worker(), name="packet-parser-service-task")
+        packet_parser.worker(service_control), name="packet-parser-service-task")
 
     # add task reference
     service_control.task = packet_parser_service_task
@@ -233,26 +233,22 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
 
     # block until signal shutdown
     services_manager.terminate = False
-    update_task: asyncio.Task = main_loop.create_task(
+    blocking_task: asyncio.Task = main_loop.create_task(
         application_status(services_manager))
 
-    await asyncio.gather(update_task, return_exceptions=True)
-    print(asyncio.all_tasks())
+    await asyncio.gather(blocking_task, return_exceptions=True)
+
     # use introspection to retrieve all set of not yet finished Task objects run by the loop.
-    # if len(asyncio.all_tasks(main_loop)) > 1:
-    #     # wait for other tasks to complete
-    #     tasks = []
-    #     for task in asyncio.all_tasks(main_loop):
-    #         # skip this coroutine function
-    #         if task.get_coro().__name__ == "start_app":
-    #             continue
-    #         tasks.append(task)
-    #     # error out on exceptions
-    #     await asyncio.gather(*tasks, return_exceptions=False)
-    #     main_loop.stop()
-    # else:
-    #     # stop main loop
-    #     main_loop.stop()
+    if len(asyncio.all_tasks(main_loop)) > 1:
+        # wait for other tasks to complete
+        tasks = []
+        for task in asyncio.all_tasks(main_loop):
+            # skip this coroutine function
+            if task.get_coro().__name__ == "start_app":
+                continue
+            tasks.append(task)
+        # error out on exceptions
+        await asyncio.gather(*tasks, return_exceptions=False)
 
 
 def main(args: argparse.Namespace) -> int:
