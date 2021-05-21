@@ -115,6 +115,10 @@ async def packet_parser_service(services_manager: Service_Manager, service_contr
     # the listening interface to reach the monitor server.
     filter_submission_traffic = kwargs.pop("FilterSubmissionTraffic")
     filters = kwargs.pop("Filters")
+    undefinedprotocolstorage = kwargs.pop("UndefinedProtocolStorage")
+
+    # set protocol parser raw output directory
+    Protocol_Parser.set_output_directory(undefinedprotocolstorage)
 
     # create a new Packet_Filter. The Packet_Filter holds all filters and applies them to the captured packets
     packet_filter: Packet_Filter = Packet_Filter(
@@ -150,8 +154,9 @@ async def packet_parser_service(services_manager: Service_Manager, service_contr
 
 async def application_status(services_manager: Service_Manager, update_interval: int = 5):
     while not services_manager.terminate:
-        print("application status:")
-        await services_manager.status()
+        print("\tApplication Status:")
+        print("Data Queues:")
+        await services_manager.data_queue_status()
         await asyncio.sleep(update_interval)
 
     # close application
@@ -207,42 +212,38 @@ async def application(interface_name: Optional[str] = None, configuration_file: 
         services_manager.close_threads()
         return EXIT_FAILURE
 
-    # start packet submitter service
-    ps_service_control = Service_Control("packet submiter")
-    await packet_submitter_service(
-        services_manager,
-        ps_service_control,
-        RemoteMetadataStorage=app_config.RemoteMetadataStorage,
-        LocalMetadataStorage=app_config.LocalMetadataStorage,
-        ResubmissionInterval=app_config.ResubmissionInterval,
-        GeneralLogStorage=app_config.GeneralLogStorage)
+    # # start packet submitter service
+    # ps_service_control = Service_Control("packet submiter")
+    # await packet_submitter_service(
+    #     services_manager,
+    #     ps_service_control,
+    #     RemoteMetadataStorage=app_config.RemoteMetadataStorage,
+    #     LocalMetadataStorage=app_config.LocalMetadataStorage,
+    #     ResubmissionInterval=app_config.ResubmissionInterval,
+    #     GeneralLogStorage=app_config.GeneralLogStorage)
 
-    #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
-    await asyncio.sleep(0.1)
-    if ps_service_control.error:
-        print("error in packet submitter service thread")
-        services_manager.close_threads()
-        return EXIT_FAILURE
+    # #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
+    # await asyncio.sleep(0.1)
+    # if ps_service_control.error:
+    #     print("error in packet submitter service thread")
+    #     services_manager.close_threads()
+    #     return EXIT_FAILURE
 
-    # configure logger and output directory for Protocol Parser
-    Protocol_Parser.set_output_directory(app_config.UndefinedProtocolStorage)
-    Protocol_Parser.set_async_loop(main_loop)
+    # # configure and packet parser service
+    # pp_service_control = Service_Control("packet parser")
+    # await packet_parser_service(
+    #     services_manager,
+    #     pp_service_control,
+    #     Filters=app_config.Filters,
+    #     FilterSubmissionTraffic=app_config.FilterSubmissionTraffic
+    # )
 
-    # configure and packet parser service
-    pp_service_control = Service_Control("packet parser")
-    await packet_parser_service(
-        services_manager,
-        pp_service_control,
-        Filters=app_config.Filters,
-        FilterSubmissionTraffic=app_config.FilterSubmissionTraffic
-    )
-
-    #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
-    await asyncio.sleep(0.1)
-    if pp_service_control.error:
-        print("error in packet parser service thread")
-        services_manager.close_threads()
-        return EXIT_FAILURE
+    # #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
+    # await asyncio.sleep(0.1)
+    # if pp_service_control.error:
+    #     print("error in packet parser service thread")
+    #     services_manager.close_threads()
+    #     return EXIT_FAILURE
 
     # block until signal shutdown
     services_manager.terminate = False
@@ -250,7 +251,7 @@ async def application(interface_name: Optional[str] = None, configuration_file: 
         application_status(services_manager))
 
     # wait for blocking task to stop
-    await asyncio.wait_for(blocking_task, return_exceptions=False)
+    await asyncio.wait_for(blocking_task, None)
 
 
 def main(args: argparse.Namespace) -> int:

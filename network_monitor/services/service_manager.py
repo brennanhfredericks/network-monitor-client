@@ -1,7 +1,7 @@
 
 import sys
 import asyncio
-import queue
+
 import threading
 
 from logging import Formatter
@@ -22,8 +22,8 @@ class Service_Control(object):
     sentinal: bool = True
     loop: Optional[asyncio.AbstractEventLoop] = None
 
-    in_queue: Optional[queue.Queue] = None
-    out_queue: Optional[queue.Queue] = None
+    in_queue: Optional[asyncio.Queue] = None
+    out_queue: Optional[asyncio.Queue] = None
     error: Optional[bool] = None
 
 
@@ -47,102 +47,87 @@ class Service_Manager(object):
     def __init__(self) -> None:
 
         self._data_queues: Dict[Data_Queue_Identifier,
-                                queue.Queue] = OrderedDict()
+                                asyncio.Queue] = OrderedDict()
 
-        self._threaded_services: OrderedDict[Service_Identifier,
-                                             Service_Control] = OrderedDict()
-        self._main_loop_services: OrderedDict[Service_Identifier,
-                                              Service_Control] = OrderedDict()
+        self._services: OrderedDict[Service_Identifier,
+                                    Service_Control] = OrderedDict()
+
         self.terminate: Optional[bool] = None
-        self._logger = Logger()
+        self._logger = Logger().with_default_handlers()
 
-        stream_format = Formatter(
-            "%(asctime)s -:- %(name)s -:- %(levelname)s"
-        )
-        stream_handler = AsyncStreamHandler(
-            stream=sys.stdout, formatter=stream_format)
-        self._logger.add_handler(stream_handler)
+        # stream_format = Formatter(
+        #     "%(asctime)s"
+        # )
 
-    async def status(self):
+        # # configure asynchronous stream logger
+        # stream_handler = AsyncStreamHandler(
+        #     stream=sys.stdout, formatter=stream_format)
+        # self._logger.add_handler(stream_handler)
+
+    async def data_queue_status(self):
         for k, v in self._data_queues.items():
-            print(f"Queue: {k} Size: {v.qsize()}")
+            await self._logger.info(f"{k} size: {v.qsize()}")
 
     async def performance(self):
         ...
 
     def check_for_exceptions(self) -> bool:
-        for k, v in self._threaded_services.items():
+        for k, v in self._services.items():
             print(k, v.error)
-        return any(list(v.error for v in self._threaded_services.values()))
+        return any(list(v.error for v in self._services.values()))
 
-    def register_queue_reference(self, queue_identifier: Data_Queue_Identifier, data_queue: queue.Queue) -> None:
+    def register_queue_reference(self, queue_identifier: Data_Queue_Identifier, data_queue: asyncio.Queue) -> None:
         """
-            Add a new data queue that used to share data between asynchronous tasks and/or threads
+            Add a new data queue that used to share data between threads
         """
         self._data_queues[queue_identifier] = data_queue
 
-    def retrieve_queue_reference(self, queue_identifier: Data_Queue_Identifier) -> queue.Queue:
+    def retrieve_queue_reference(self, queue_identifier: Data_Queue_Identifier) -> asyncio.Queue:
         """
             Get a reference to a data queue in order to configure endpoint
         """
         return self._data_queues[queue_identifier]
 
-    def add_threaded_service(self, service_identifier: Service_Identifier, service_control: Service_Control) -> None:
+    def add_service(self, service_identifier: Service_Identifier, service_control: Service_Control) -> None:
         # use service manager to handle threads
-        self._threaded_services[service_identifier] = service_control
+        self._services[service_identifier] = service_control
 
         # start thread
-        self._threaded_services[service_identifier].thread.start()
+        self._services[service_identifier].thread.start()
 
-    def stop_threaded_service(self, service_identifier: Service_Identifier):
-        print(f"thread {service_identifier} has been requested to stop")
-        service_control = self._threaded_services.pop(service_identifier)
+    def stop_service(self, service_identifier: Service_Identifier):
+        print(f"requested: {service_identifier} to stop")
+        service_control = self._services.pop(service_identifier)
         service_control.sentinal = False
         if service_control.loop is not None:
             print(asyncio.all_tasks(service_control.loop))
-            service_control.loop.stop()
+
         service_control.thread.join()
+        print(f"terminated: {service_identifier} has been closed")
 
-        # remove thread reference
-
-        print(f"thread {service_identifier} has been stopped")
-
-    def add_local_service(self, service_identifier: Service_Identifier, service_control: Service_Control) -> None:
-        # add service to Order dict
-        self._main_loop_services[service_identifier] = service_control
-
-    def stop_local_service(self, service_identifier: Service_Identifier) -> None:
-        # implement later
-        service_control = self._main_loop_services.pop(service_identifier)
-        service_control.sentinal = False
-        service_control.task.cancel()
-
-        print(f"asynchronous {service_identifier} has been stopped")
-
-    def close_threads(self) -> None:
-        thread_keys = list(self._threaded_services.keys())
-        for thread_key in thread_keys:
-            self.stop_threaded_service(thread_key)
-            print(f"thread {thread_key} joined")
+    def stop_all_service(self) -> None:
+        service_keys = list(self._services.keys())
+        for service_key in service_keys:
+            self.stop_service(service_key)
 
     async def close_application(self) -> None:
 
         # stop listener service
 
-        self.stop_threaded_service(
+        self.stop_service(
             Service_Identifier.Interface_Listener_Service)
 
         # wait for packet service to clear the raw data queue
         self.retrieve_queue_reference(Data_Queue_Identifier.Raw_Data).join()
 
-        # stop packet parser service
-        self.stop_threaded_service(Service_Identifier.Packet_Parser_Service)
+        # # stop packet parser service
+        # self.stop_service(Service_Identifier.Packet_Parser_Service)
 
-        # wait for packet submiiter to clear the raw data queue
-        self.retrieve_queue_reference(
-            Data_Queue_Identifier.Processed_Data).join()
+        # # wait for packet submiiter to clear the raw data queue
+        # self.retrieve_queue_reference(
+        #     Data_Queue_Identifier.Processed_Data).join()
 
-        # stop packet submitter service
-        self.stop_local_service(Service_Identifier.Packet_Submitter_Service)
+        # # stop packet submitter service
+        # self.stop_service(Service_Identifier.Packet_Submitter_Service)
 
         await self._logger.info("all services have been stopped")

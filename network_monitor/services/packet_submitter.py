@@ -258,7 +258,7 @@ class Packet_Submitter(object):
                     #s = time.monotonic()
                     # wait for processed data from the packer service queue
                     data: Dict[str, Dict[str, Union[str, int]]
-                               ] = service_control.in_queue.get()
+                               ] = await service_control.in_queue.get()
                     await self._submitter.process(data)
                     service_control.in_queue.task_done()
                     #print("packet parser time diff: ", time.monotonic()-s)

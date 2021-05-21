@@ -106,7 +106,7 @@ class Interface_Listener(object):
         self.log_directory: str = log_directory
 
     # if operation is not true asynchronous hence the need to run in a seperate thread
-    def worker(self, service_control: Service_Control) -> None:
+    async def worker(self, service_control: Service_Control) -> None:
 
         stream_format = logging.Formatter(
             "%(asctime)s -:- %(name)s -:- %(levelname)s -:- %(message)s"
@@ -149,7 +149,7 @@ class Interface_Listener(object):
                         sniffed_timestamp: float = time.time()
 
                         # add raw to be processed by other service
-                        service_control.out_queue.put(
+                        await service_control.out_queue.put(
                             (sniffed_timestamp, packet)
                         )
 

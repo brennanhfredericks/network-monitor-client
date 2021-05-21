@@ -190,7 +190,12 @@ class Packet_Parser(object):
             # implement packet filter here before adding data to output
         return out_packet
 
+    async def _configure_protocol_parser(self):
+        # set protocol asynchronous loop
+        Protocol_Parser.set_async_loop(asyncio.get_running_loop())
+
     async def worker(self, service_control: Service_Control) -> None:
+
         stream_format = Formatter(
             "%(asctime)s -:- %(name)s -:- %(levelname)s"
         )
@@ -207,7 +212,7 @@ class Packet_Parser(object):
             try:
 
                 sniffed_timestamp, (raw_bytes,
-                                    address) = service_control.in_queue.get()
+                                    address) = await service_control.in_queue.get()
 
                 af_packet: AF_Packet = AF_Packet(address)
 
@@ -230,8 +235,7 @@ class Packet_Parser(object):
                     }
                     packet["Info"] = info
 
-                    service_control.out_queue.put(packet)
-                await asyncio.sleep(0.001)
+                    await service_control.out_queue.put(packet)
 
             except CancelledError as e:
                 # perform any operation before shut down here
