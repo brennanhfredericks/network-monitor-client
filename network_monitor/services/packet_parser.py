@@ -187,7 +187,8 @@ class Packet_Parser(object):
             out_packet = Packet_802_3(raw_bytes)
 
         # Tuple[AF_Packet, Union[Packet_802_2, Packet_802_3]]
-            # implement packet filter here before adding data to output queue
+            # implement packet filter here before adding data to output
+        return out_packet
 
     async def worker(self, service_control: Service_Control) -> None:
         stream_format = Formatter(
@@ -204,19 +205,21 @@ class Packet_Parser(object):
 
         while service_control.sentinal:
             try:
-                print(service_control.in_queue)
-                sniffed_timestamp, (raw_bytes, address) = await service_control.in_queue.get()
+
+                sniffed_timestamp, (raw_bytes,
+                                    address) = service_control.in_queue.get()
+
+                af_packet: AF_Packet = AF_Packet(address)
 
                 # process raw packet
-                await self._process_packet(sniffed_timestamp, address, raw_bytes)
+                out_packet = await self._process_packet(af_packet, raw_bytes)
 
                 service_control.in_queue.task_done()
-                af_packet: AF_Packet = AF_Packet(address)
 
                 # this should be move outside the worker. packet parser process the raw bytes into and object.
                 # register callback to be called on object when processed. these callback could be different functionality such as pack filtering and stream tracking
                 packet: Optional[Dict[str, Dict[str, Union[str, int, float]]]] = self.packet_filter.apply(
-                    af_packet, raw_bytes)
+                    af_packet, out_packet)
 
                 if packet is not None:
                     processed_timestamp = time.time()
@@ -227,11 +230,12 @@ class Packet_Parser(object):
                     }
                     packet["Info"] = info
 
-                    await service_control.out_queue.put(packet)
+                    service_control.out_queue.put(packet)
+                await asyncio.sleep(0.001)
 
             except CancelledError as e:
                 # perform any operation before shut down here
                 await logger.info("packet parser service has been cancelled")
                 raise e
             except Exception as e:
-                await logger.exception(f"other exception in packer_parser: {e}")
+                await logger.exception(f"exception in packer_parser {e}")

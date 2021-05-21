@@ -21,7 +21,7 @@ class Service_Control(object):
     thread: Optional[threading.Thread] = None
     sentinal: bool = True
     loop: Optional[asyncio.AbstractEventLoop] = None
-    task: Optional[asyncio.Task] = None
+
     in_queue: Optional[queue.Queue] = None
     out_queue: Optional[queue.Queue] = None
     error: Optional[bool] = None
@@ -65,7 +65,7 @@ class Service_Manager(object):
 
     async def status(self):
         for k, v in self._data_queues.items():
-            await self._logger.info(f"Queue: {k} Size: {v.qsize()}")
+            print(f"Queue: {k} Size: {v.qsize()}")
 
     async def performance(self):
         ...
@@ -79,7 +79,7 @@ class Service_Manager(object):
         """
             Add a new data queue that used to share data between asynchronous tasks and/or threads
         """
-        self._data_queues[queue_identifier] = queue
+        self._data_queues[queue_identifier] = data_queue
 
     def retrieve_queue_reference(self, queue_identifier: Data_Queue_Identifier) -> queue.Queue:
         """

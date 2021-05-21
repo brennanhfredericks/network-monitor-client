@@ -253,11 +253,12 @@ class Packet_Submitter(object):
             # configure asynchronous loop to add other task such as clearing old logs
             self._submitter.set_async_loop(loop)
             while service_control.sentinal:
-                print(time.monotonic())
+                # print(time.monotonic())
                 try:
                     #s = time.monotonic()
                     # wait for processed data from the packer service queue
-                    data: Dict[str, Dict[str, Union[str, int]]] = await service_control.in_queue.get()
+                    data: Dict[str, Dict[str, Union[str, int]]
+                               ] = service_control.in_queue.get()
                     await self._submitter.process(data)
                     service_control.in_queue.task_done()
                     #print("packet parser time diff: ", time.monotonic()-s)
@@ -268,4 +269,4 @@ class Packet_Submitter(object):
                     await self._submitter.flush()
                     raise e
                 except Exception as e:
-                    await logger.exception(f"An error occured in packet submitter service")
+                    await logger.exception(f"An error occured in packet submitter service {e}")

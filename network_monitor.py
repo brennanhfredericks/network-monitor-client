@@ -25,7 +25,7 @@ import os
 import signal
 import functools
 import threading
-import queue
+
 import logging
 
 EXIT_SUCCESS = 0
@@ -33,12 +33,12 @@ EXIT_FAILURE = 1
 # execute in its own thread
 
 
-def create_async_loop(service_object: Any, service_control: Service_Control):
+def spawn_event_loop(service_object: Any, service_control: Service_Control):
     # start asynchronous loop
     asyncio.run(service_object.worker(service_control))
 
 
-async def threaded_packet_submitter_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> None:
+async def packet_submitter_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> None:
 
     # retrieve args
     remote_metadata_storage: str = kwargs.pop("RemoteMetadataStorage")
@@ -54,7 +54,7 @@ async def threaded_packet_submitter_service(services_manager: Service_Manager, s
         resubmission_interval
     )
 
-    service_control.in_queue = queue.Queue()
+    service_control.in_queue = asyncio.Queue()
 
     # register queue for easy reference between services
     services_manager.register_queue_reference(
@@ -62,7 +62,7 @@ async def threaded_packet_submitter_service(services_manager: Service_Manager, s
 
     service_control.thread = threading.Thread(
         group=None,
-        target=create_async_loop,
+        target=spawn_event_loop,
         args=(
             packet_submitter,
             service_control
@@ -71,11 +71,11 @@ async def threaded_packet_submitter_service(services_manager: Service_Manager, s
         daemon=False
     )
 
-    services_manager.add_threaded_service(
+    services_manager.add_service(
         Service_Identifier.Packet_Submitter_Service, service_control)
 
 
-async def threaded_interface_listener_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> None:
+async def interface_listener_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> None:
 
     # retrieve kwargs
     interface_name = kwargs.pop("InterfaceName")
@@ -88,7 +88,7 @@ async def threaded_interface_listener_service(services_manager: Service_Manager,
     )
 
     # configure interface listener output queue
-    service_control.out_queue = queue.Queue()
+    service_control.out_queue = asyncio.Queue()
 
     # register queue for easy reference between services
     services_manager.register_queue_reference(
@@ -96,24 +96,23 @@ async def threaded_interface_listener_service(services_manager: Service_Manager,
     # configure service thread
     service_control.thread = threading.Thread(
         group=None,
-        target=interface_listener.worker,
+        target=spawn_event_loop,
         name="interface-listener-service",
         args=(
+            interface_listener,
             service_control,
         ),
         daemon=False
     )
 
     # add thread to services manager and start
-    services_manager.add_threaded_service(
+    services_manager.add_service(
         Service_Identifier.Interface_Listener_Service, service_control)
 
 
-async def asynchronous_packet_parser_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> None:
+async def packet_parser_service(services_manager: Service_Manager, service_control: Service_Control, **kwargs) -> None:
     # configure packet filter. Need implement FilterSubmissionTraffic, only a issue if the application network packets need to be routed via
     # the listening interface to reach the monitor server.
-    loop = asyncio.get_running_loop()
-
     filter_submission_traffic = kwargs.pop("FilterSubmissionTraffic")
     filters = kwargs.pop("Filters")
 
@@ -133,15 +132,19 @@ async def asynchronous_packet_parser_service(services_manager: Service_Manager, 
 
     packet_parser = Packet_Parser(packet_filter)
 
-    # create asynchronous service task
-    packet_parser_service_task: asyncio.Task = loop.create_task(
-        packet_parser.worker(service_control), name="packet-parser-service-task")
-
-    # add task reference
-    service_control.task = packet_parser_service_task
+    service_control.thread = threading.Thread(
+        group=None,
+        target=spawn_event_loop,
+        name="packet-parser-service-service",
+        args=(
+            packet_parser,
+            service_control,
+        ),
+        daemon=False
+    )
 
     # add asynchronous service
-    services_manager.add_local_service(
+    services_manager.add_service(
         Service_Identifier.Packet_Parser_Service, service_control)
 
 
@@ -155,7 +158,7 @@ async def application_status(services_manager: Service_Manager, update_interval:
     await services_manager.close_application()
 
 
-async def start_app(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> int:
+async def application(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> int:
 
     # get main asyncio loop
     main_loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
@@ -189,7 +192,7 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
 
     # start listener service
     il_service_control = Service_Control("interface listener")
-    await threaded_interface_listener_service(
+    await interface_listener_service(
         services_manager,
         il_service_control,
         InterfaceName=app_config.InterfaceName,
@@ -206,7 +209,7 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
 
     # start packet submitter service
     ps_service_control = Service_Control("packet submiter")
-    await threaded_packet_submitter_service(
+    await packet_submitter_service(
         services_manager,
         ps_service_control,
         RemoteMetadataStorage=app_config.RemoteMetadataStorage,
@@ -226,29 +229,28 @@ async def start_app(interface_name: Optional[str] = None, configuration_file: Op
     Protocol_Parser.set_async_loop(main_loop)
 
     # configure and packet parser service
-    pp_services_control = Service_Control("packet parser")
-    await asynchronous_packet_parser_service(services_manager, pp_services_control, Filters=app_config.Filters, FilterSubmissionTraffic=app_config.FilterSubmissionTraffic)
+    pp_service_control = Service_Control("packet parser")
+    await packet_parser_service(
+        services_manager,
+        pp_service_control,
+        Filters=app_config.Filters,
+        FilterSubmissionTraffic=app_config.FilterSubmissionTraffic
+    )
 
-    # no need to wait for error, since the service in running in the main loop
+    #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
+    await asyncio.sleep(0.1)
+    if pp_service_control.error:
+        print("error in packet parser service thread")
+        services_manager.close_threads()
+        return EXIT_FAILURE
 
     # block until signal shutdown
     services_manager.terminate = False
     blocking_task: asyncio.Task = main_loop.create_task(
         application_status(services_manager))
 
-    await asyncio.gather(blocking_task, return_exceptions=True)
-
-    # use introspection to retrieve all set of not yet finished Task objects run by the loop.
-    if len(asyncio.all_tasks(main_loop)) > 1:
-        # wait for other tasks to complete
-        tasks = []
-        for task in asyncio.all_tasks(main_loop):
-            # skip this coroutine function
-            if task.get_coro().__name__ == "start_app":
-                continue
-            tasks.append(task)
-        # error out on exceptions
-        await asyncio.gather(*tasks, return_exceptions=False)
+    # wait for blocking task to stop
+    await asyncio.wait_for(blocking_task, return_exceptions=False)
 
 
 def main(args: argparse.Namespace) -> int:
@@ -285,14 +287,14 @@ def main(args: argparse.Namespace) -> int:
 
                 # init_method from configuration file load
                 init_method = loop.create_task(
-                    start_app(configuration_file=args.load_config_file),
+                    application(configuration_file=args.load_config_file),
                     name="start_app"
                 )
 
             elif args.interface:
                 # start on specified interface
                 init_method = loop.create_task(
-                    start_app(interface_name=args.interface),
+                    application(interface_name=args.interface),
                     name="start_app"
                 )
 
