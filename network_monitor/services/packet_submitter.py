@@ -38,11 +38,14 @@ class Submitter(object):
         url: str,
         log_dir: str,
         max_buffer_size: int = 5,
+        timeout: int = 300,
         retryinterval: int = 300,
     ) -> None:
 
         self.url: str = url
         self.retryinterval: int = retryinterval
+        self.session_timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(
+            total=timeout)
         self._logs_written: bool = False
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._logger: Optional[Logger] = None
@@ -78,9 +81,9 @@ class Submitter(object):
         self._checked_for_logs = time.time()
 
     async def _post_to_server(self, data, session: ClientSession) -> None:
-
+        timeout = aiohttp.ClientTimeout(total=5)
         # return context manager
-        resp = await session.post(self.url, json=data)
+        resp = await session.post(self.url, json=data, timeout=timeout)
         # if fail raise ClientResponseError
         resp.raise_for_status()
 
@@ -105,7 +108,7 @@ class Submitter(object):
             # load from disk
 
             # open tcp session
-            async with ClientSession() as session:
+            async with ClientSession(timeout=self.session_timeout) as session:
                 # check if monitor server avalable
                 resp = await session.get(self.url)
 
@@ -147,7 +150,7 @@ class Submitter(object):
         try:
             # try to post data to the service
             await self._post_to_server(data, session)
-        except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
+        except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError, asyncio.exceptions.TimeoutError) as e:
             # server not available write data to file
             await self._local_storage(data, fout)
             # await self._logger.warning(f"something wrong with remote storage: {e}")
@@ -158,7 +161,7 @@ class Submitter(object):
         tasks: List[Task] = []
 
         try:
-            async with ClientSession() as session:
+            async with ClientSession(timeout=self.session_timeout) as session:
                 async with aiofiles.open(self.out_file, "a") as fout:
                     for data in self._buffer:
                         data["Info"]["Submitter_Timestamp"] = time.time()
@@ -281,3 +284,5 @@ class Packet_Submitter(object):
                     raise e
                 except Exception as e:
                     await logger.exception(f"An error occured in packet submitter service {e}")
+
+        print(asyncio.all_tasks())
