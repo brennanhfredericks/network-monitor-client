@@ -31,7 +31,6 @@ import logging
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
-# execute in its own thread
 
 
 def spawn_event_loop(service_object: Any, service_control: Service_Control):
@@ -153,16 +152,25 @@ async def packet_parser_service(services_manager: Service_Manager, service_contr
         Service_Identifier.Packet_Parser_Service, service_control)
 
 
-async def application_status(services_manager: Service_Manager, update_interval: int = 5):
+async def exit_application(services_manager: Service_Manager):
 
     while not services_manager.terminate:
+        await asyncio.sleep(1)
+
+    await services_manager.close_application()
+
+    # end application status update loop
+    services_manager.status = False
+
+
+async def application_status(services_manager: Service_Manager, update_interval: int = 5):
+
+    while services_manager.status:
         print("\tApplication Status:")
         print("Data Queues:")
         await services_manager.data_queue_status()
         await services_manager.service_stats()
         await asyncio.sleep(update_interval)
-
-    await services_manager.close_application()
 
 
 async def application(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> int:
@@ -250,11 +258,21 @@ async def application(interface_name: Optional[str] = None, configuration_file: 
 
     # block until signal shutdown
     services_manager.terminate = False
-    blocking_task: asyncio.Task = main_loop.create_task(
+
+    # application status
+    services_manager.status = True
+
+    # should be depended -v (verbose flag)
+
+    status_task: asyncio.Task = main_loop.create_task(
         application_status(services_manager))
 
+    blocking_task: asyncio.Task = main_loop.create_task(
+        exit_application(services_manager)
+    )
+
     # wait for blocking task to stop
-    await asyncio.wait_for(blocking_task, None)
+    await asyncio.gather(status_task, blocking_task, return_exceptions=True)
 
 
 def main(args: argparse.Namespace) -> int:

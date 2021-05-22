@@ -54,6 +54,7 @@ class Service_Manager(object):
                                     Service_Control] = OrderedDict()
 
         self.terminate: Optional[bool] = None
+        self.status: Optional[bool] = None
         self._logger = Logger()
 
         # # configure asynchronous stream logger
@@ -120,16 +121,18 @@ class Service_Manager(object):
         await self.stop_service(
             Service_Identifier.Interface_Listener_Service)
 
+        await self._logger.info(f"waiting for {Data_Queue_Identifier.Raw_Data} to join")
         # wait for packet service to clear the raw data queue
         self.retrieve_queue_reference(Data_Queue_Identifier.Raw_Data).join()
-
+        await self._logger.info(f"waiting for {Data_Queue_Identifier.Raw_Data} to joined")
         # # stop packet parser service
         await self.stop_service(Service_Identifier.Packet_Parser_Service)
 
+        await self._logger.info(f"waiting for {Data_Queue_Identifier.Processed_Data} to join")
         # wait for packet submiiter to clear the raw data queue
         self.retrieve_queue_reference(
             Data_Queue_Identifier.Processed_Data).join()
-
+        await self._logger.info(f"waiting for {Data_Queue_Identifier.Processed_Data} to joined")
         # stop packet submitter service
         await self.stop_service(Service_Identifier.Packet_Submitter_Service)
 
