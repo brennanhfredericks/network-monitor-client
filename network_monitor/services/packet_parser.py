@@ -197,6 +197,8 @@ class Packet_Parser(object):
 
     async def worker(self, service_control: Service_Control) -> None:
 
+        service_control.loop = asyncio.get_running_loop()
+
         logger = Logger(
             name=__name__
         )
@@ -206,10 +208,11 @@ class Packet_Parser(object):
         logger.add_handler(stream_handler)
 
         while service_control.sentinal:
+
             try:
 
                 sniffed_timestamp, (raw_bytes,
-                                    address) = service_control.in_channel.get()
+                                    address) = service_control.in_channel.get(timeout=1)
 
                 af_packet: AF_Packet = AF_Packet(address)
 
@@ -233,7 +236,8 @@ class Packet_Parser(object):
                     packet["Info"] = info
 
                     service_control.out_channel.put(packet)
-
+            except queue.Empty:
+                pass
             except CancelledError as e:
                 # perform any operation before shut down here
                 await logger.info("packet parser service has been cancelled")

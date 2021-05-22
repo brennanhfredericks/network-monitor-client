@@ -154,18 +154,15 @@ async def packet_parser_service(services_manager: Service_Manager, service_contr
 
 
 async def application_status(services_manager: Service_Manager, update_interval: int = 5):
-    run = True
-    while run:
+
+    while not services_manager.terminate:
         print("\tApplication Status:")
         print("Data Queues:")
         await services_manager.data_queue_status()
         await services_manager.service_stats()
         await asyncio.sleep(update_interval)
 
-        if services_manager.terminate:
-            await services_manager.close_application()
-            run = False
-            # close application
+    await services_manager.close_application()
 
 
 async def application(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> int:
@@ -311,7 +308,6 @@ def main(args: argparse.Namespace) -> int:
             # loop.close()
             # flush out all logger
             ...
-    print(asyncio.all_tasks(loop))
     print("application closed")
     # exit_succes
     logging.shutdown()

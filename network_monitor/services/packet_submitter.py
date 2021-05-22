@@ -18,7 +18,8 @@ from aiologger.handlers.streams import AsyncStreamHandler
 from aiologger.handlers.files import AsyncFileHandler
 from aiologger.levels import LogLevel
 
-from asyncio import Task, Queue, CancelledError
+from asyncio import Task, CancelledError
+import queue
 from aiofiles.threadpool import AsyncFileIO
 
 from network_monitor.filters import flatten_protocols
@@ -260,7 +261,7 @@ class Packet_Submitter(object):
                     #s = time.monotonic()
                     # wait for processed data from the packer service queue
                     data: Dict[str, Dict[str, Union[str, int]]
-                               ] = service_control.in_channel.get()
+                               ] = service_control.in_channel.get(timeout=1)
 
                     await logger.debug(f"Data: {data}\n")
 
@@ -271,6 +272,8 @@ class Packet_Submitter(object):
                     service_control.in_channel.task_done()
                     #print("packet parser time diff: ", time.monotonic()-s)
                     service_control.stats["packets_submitted"] += 1
+                except queue.Empty:
+                    pass
                 except CancelledError as e:
                     # clear internal buffer
                     await logger.info("clearing internal buffer")

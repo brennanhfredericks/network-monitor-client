@@ -100,6 +100,8 @@ class Service_Manager(object):
         print(f"requested: {service_identifier} to stop")
         service_control = self._services.pop(service_identifier)
         service_control.sentinal = False
+
+        await asyncio.sleep(5)
         if service_control.loop is not None:
             print(asyncio.all_tasks(service_control.loop))
 
