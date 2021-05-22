@@ -1,6 +1,7 @@
 import time
 import json
 import asyncio
+import queue
 import sys
 from asyncio import CancelledError
 
@@ -196,31 +197,27 @@ class Packet_Parser(object):
 
     async def worker(self, service_control: Service_Control) -> None:
 
-        stream_format = Formatter(
-            "%(asctime)s -:- %(name)s -:- %(levelname)s"
-        )
-
         logger = Logger(
             name=__name__
         )
 
         stream_handler = AsyncStreamHandler(
-            stream=sys.stderr, formatter=stream_format)
+            stream=sys.stderr)
         logger.add_handler(stream_handler)
 
         while service_control.sentinal:
             try:
 
                 sniffed_timestamp, (raw_bytes,
-                                    address) = await service_control.in_queue.get()
+                                    address) = service_control.in_channel.get()
 
                 af_packet: AF_Packet = AF_Packet(address)
 
                 # process raw packet
                 out_packet = await self._process_packet(af_packet, raw_bytes)
 
-                service_control.in_queue.task_done()
-
+                service_control.in_channel.task_done()
+                service_control.stats["packets parsed"] += 1
                 # this should be move outside the worker. packet parser process the raw bytes into and object.
                 # register callback to be called on object when processed. these callback could be different functionality such as pack filtering and stream tracking
                 packet: Optional[Dict[str, Dict[str, Union[str, int, float]]]] = self.packet_filter.apply(
@@ -235,7 +232,7 @@ class Packet_Parser(object):
                     }
                     packet["Info"] = info
 
-                    await service_control.out_queue.put(packet)
+                    service_control.out_channel.put(packet)
 
             except CancelledError as e:
                 # perform any operation before shut down here

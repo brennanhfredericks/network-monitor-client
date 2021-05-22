@@ -12,7 +12,7 @@ import asyncio
 
 from aiohttp import ClientSession
 
-from logging import Formatter
+
 from aiologger import Logger
 from aiologger.handlers.streams import AsyncStreamHandler
 from aiologger.handlers.files import AsyncFileHandler
@@ -147,7 +147,7 @@ class Submitter(object):
         except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError) as e:
             # server not available write data to file
             await self._local_storage(data, fout)
-            await self._logger.warning(f"something wrong with remote storage: {e}")
+            # await self._logger.warning(f"something wrong with remote storage: {e}")
         except Exception as e:
 
             await self._logger.exception(f"exception occured when trying to switch between post_or_disk: {e}")
@@ -225,15 +225,11 @@ class Packet_Submitter(object):
         # could be used to inject other asynchronouse task
         service_control.loop = loop
 
-        stream_format = Formatter(
-            "%(asctime)s -:- %(name)s -:- %(levelname)s"
-        )
-
         logger = Logger(name=__name__)
 
         # create handles
         stream_handler = AsyncStreamHandler(
-            stream=sys.stderr, formatter=stream_format)
+            stream=sys.stderr)
         logger.add_handler(stream_handler)
 
         try:
@@ -243,7 +239,7 @@ class Packet_Submitter(object):
             logger.add_handler(file_handler)
 
         except Exception as e:
-            await logger.exception("error creating AsycFileHandler")
+            await logger.exception("error creating AsycFileHandler: {e}")
             service_control.error = True
         else:
 
@@ -258,11 +254,11 @@ class Packet_Submitter(object):
                     #s = time.monotonic()
                     # wait for processed data from the packer service queue
                     data: Dict[str, Dict[str, Union[str, int]]
-                               ] = await service_control.in_queue.get()
-                    await self._submitter.process(data)
-                    service_control.in_queue.task_done()
+                               ] = service_control.in_channel.get()
+                    # await self._submitter.process(data)
+                    service_control.in_channel.task_done()
                     #print("packet parser time diff: ", time.monotonic()-s)
-
+                    service_control.stats["packets submitted"] += 1
                 except CancelledError as e:
                     # clear internal buffer
                     await logger.info("clearing internal buffer")

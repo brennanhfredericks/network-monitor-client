@@ -21,6 +21,7 @@ from network_monitor import (
 import netifaces
 import argparse
 import asyncio
+import queue
 import os
 import signal
 import functools
@@ -54,11 +55,11 @@ async def packet_submitter_service(services_manager: Service_Manager, service_co
         resubmission_interval
     )
 
-    service_control.in_queue = asyncio.Queue()
+    service_control.in_channel = queue.Queue()
 
     # register queue for easy reference between services
     services_manager.register_queue_reference(
-        Data_Queue_Identifier.Processed_Data, service_control.in_queue)
+        Data_Queue_Identifier.Processed_Data, service_control.in_channel)
 
     service_control.thread = threading.Thread(
         group=None,
@@ -88,11 +89,11 @@ async def interface_listener_service(services_manager: Service_Manager, service_
     )
 
     # configure interface listener output queue
-    service_control.out_queue = asyncio.Queue()
+    service_control.out_channel = queue.Queue()
 
     # register queue for easy reference between services
     services_manager.register_queue_reference(
-        Data_Queue_Identifier.Raw_Data, service_control.out_queue)
+        Data_Queue_Identifier.Raw_Data, service_control.out_channel)
     # configure service thread
     service_control.thread = threading.Thread(
         group=None,
@@ -128,9 +129,9 @@ async def packet_parser_service(services_manager: Service_Manager, service_contr
     packet_filter.register(filters)
 
     # configure service control
-    service_control.in_queue = services_manager.retrieve_queue_reference(
+    service_control.in_channel = services_manager.retrieve_queue_reference(
         Data_Queue_Identifier.Raw_Data)
-    service_control.out_queue = services_manager.retrieve_queue_reference(
+    service_control.out_channel = services_manager.retrieve_queue_reference(
         Data_Queue_Identifier.Processed_Data)
     # retrieve reference for queues from thread
 
@@ -153,14 +154,18 @@ async def packet_parser_service(services_manager: Service_Manager, service_contr
 
 
 async def application_status(services_manager: Service_Manager, update_interval: int = 5):
-    while not services_manager.terminate:
+    run = True
+    while run:
         print("\tApplication Status:")
         print("Data Queues:")
         await services_manager.data_queue_status()
+        await services_manager.service_stats()
         await asyncio.sleep(update_interval)
 
-    # close application
-    await services_manager.close_application()
+        if services_manager.terminate:
+            await services_manager.close_application()
+            run = False
+            # close application
 
 
 async def application(interface_name: Optional[str] = None, configuration_file: Optional[str] = None) -> int:
@@ -212,38 +217,39 @@ async def application(interface_name: Optional[str] = None, configuration_file: 
         services_manager.stop_all_service()
         return EXIT_FAILURE
 
-    # # start packet submitter service
-    # ps_service_control = Service_Control("packet submiter")
-    # await packet_submitter_service(
-    #     services_manager,
-    #     ps_service_control,
-    #     RemoteMetadataStorage=app_config.RemoteMetadataStorage,
-    #     LocalMetadataStorage=app_config.LocalMetadataStorage,
-    #     ResubmissionInterval=app_config.ResubmissionInterval,
-    #     GeneralLogStorage=app_config.GeneralLogStorage)
+    # start packet submitter service
+    ps_service_control = Service_Control("packet submiter")
+    await packet_submitter_service(
+        services_manager,
+        ps_service_control,
+        RemoteMetadataStorage=app_config.RemoteMetadataStorage,
+        LocalMetadataStorage=app_config.LocalMetadataStorage,
+        ResubmissionInterval=app_config.ResubmissionInterval,
+        GeneralLogStorage=app_config.GeneralLogStorage)
 
-    # #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
-    # await asyncio.sleep(0.1)
-    # if ps_service_control.error:
-    #     print("error in packet submitter service thread")
-    #     services_manager.close_threads()
-    #     return EXIT_FAILURE
+    #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
+    await asyncio.sleep(0.1)
+    if ps_service_control.error:
+        print("error in packet submitter service thread")
+        services_manager.close_threads()
+        return EXIT_FAILURE
 
-    # # configure and packet parser service
-    # pp_service_control = Service_Control("packet parser")
-    # await packet_parser_service(
-    #     services_manager,
-    #     pp_service_control,
-    #     Filters=app_config.Filters,
-    #     FilterSubmissionTraffic=app_config.FilterSubmissionTraffic
-    # )
+    # configure and packet parser service
+    pp_service_control = Service_Control("packet parser")
+    await packet_parser_service(
+        services_manager,
+        pp_service_control,
+        Filters=app_config.Filters,
+        FilterSubmissionTraffic=app_config.FilterSubmissionTraffic,
+        UndefinedProtocolStorage=app_config.UndefinedProtocolStorage
+    )
 
-    # #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
-    # await asyncio.sleep(0.1)
-    # if pp_service_control.error:
-    #     print("error in packet parser service thread")
-    #     services_manager.close_threads()
-    #     return EXIT_FAILURE
+    #  wait and check if threads start successfully, need the sleep to give the os time to spawn new thread
+    await asyncio.sleep(0.1)
+    if pp_service_control.error:
+        print("error in packet parser service thread")
+        services_manager.close_threads()
+        return EXIT_FAILURE
 
     # block until signal shutdown
     services_manager.terminate = False

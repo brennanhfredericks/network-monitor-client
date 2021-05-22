@@ -45,15 +45,11 @@ class __Parser:
         if not os.path.exists(output_directory):
             os.makedirs(output_directory)
 
-        stream_format = Formatter(
-            "%(asctime)s -:- %(name)s -:- %(levelname)s"
-        )
-
         logger = Logger(name=__name__)
 
         # create handles
         stream_handler = AsyncStreamHandler(
-            stream=sys.stderr, formatter=stream_format)
+            stream=sys.stderr)
         logger.add_handler(stream_handler)
 
     def set_async_loop(self, loop: asyncio.AbstractEventLoop):
