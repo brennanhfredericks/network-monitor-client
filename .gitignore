@@ -12,4 +12,5 @@
 .CONFIG/*
 ### VScode ####
 .vscode/*
+**/*.log
 venv/

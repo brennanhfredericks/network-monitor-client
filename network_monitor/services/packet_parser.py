@@ -217,7 +217,7 @@ class Packet_Parser(object):
                 out_packet = await self._process_packet(af_packet, raw_bytes)
 
                 service_control.in_channel.task_done()
-                service_control.stats["packets parsed"] += 1
+                service_control.stats["packets_parsed"] += 1
                 # this should be move outside the worker. packet parser process the raw bytes into and object.
                 # register callback to be called on object when processed. these callback could be different functionality such as pack filtering and stream tracking
                 packet: Optional[Dict[str, Dict[str, Union[str, int, float]]]] = self.packet_filter.apply(

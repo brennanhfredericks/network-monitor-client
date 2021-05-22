@@ -16,6 +16,7 @@ from aiohttp import ClientSession
 from aiologger import Logger
 from aiologger.handlers.streams import AsyncStreamHandler
 from aiologger.handlers.files import AsyncFileHandler
+from aiologger.levels import LogLevel
 
 from asyncio import Task, Queue, CancelledError
 from aiofiles.threadpool import AsyncFileIO
@@ -66,11 +67,12 @@ class Submitter(object):
     def output_filename(self) -> str:
         return self.out_file
 
-    def set_logger(self, logger: Logger) -> None:
+    async def set_logger(self, logger: Logger) -> None:
         self._logger = logger
 
-    def set_async_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+    async def set_async_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
+        await self._logger.debug("Submitter injecting asynchronous loop")
         self._loop.create_task(self._clear_logs())
         self._checked_for_logs = time.time()
 
@@ -149,7 +151,6 @@ class Submitter(object):
             await self._local_storage(data, fout)
             # await self._logger.warning(f"something wrong with remote storage: {e}")
         except Exception as e:
-
             await self._logger.exception(f"exception occured when trying to switch between post_or_disk: {e}")
 
     async def _process(self) -> None:
@@ -182,14 +183,15 @@ class Submitter(object):
         # add data to internal buffer
         self._buffer.append(data)
         time_now = time.time()
-
+        await self._logger.debug("new data")
         # internal buffer
         if len(self._buffer) > self.max_buffer_size:
+            await self._logger.debug("processing internal buffer")
             await self._process()
         elif (
             time_now - self._checked_for_logs > self.retryinterval
         ) and self._logs_written:
-
+            await self._logger.debug("clearing local logs")
             self._loop.create_task(self._clear_logs())
 
             self._checked_for_logs = time.time()
@@ -225,17 +227,20 @@ class Packet_Submitter(object):
         # could be used to inject other asynchronouse task
         service_control.loop = loop
 
-        logger = Logger(name=__name__)
+        logger = Logger(name=__name__, level=LogLevel.INFO)
 
         # create handles
         stream_handler = AsyncStreamHandler(
-            stream=sys.stderr)
+            stream=sys.stderr
+        )
+
         logger.add_handler(stream_handler)
 
         try:
 
             file_handler = AsyncFileHandler(
-                os.path.join(self.log_directory, "packet_submitter.log"))
+                os.path.join(self.log_directory, "packet_submitter.log")
+            )
             logger.add_handler(file_handler)
 
         except Exception as e:
@@ -244,10 +249,11 @@ class Packet_Submitter(object):
         else:
 
             # configure submitter logger
-            self._submitter.set_logger(logger)
+            await self._submitter.set_logger(logger)
 
             # configure asynchronous loop to add other task such as clearing old logs
-            self._submitter.set_async_loop(loop)
+            await self._submitter.set_async_loop(loop)
+
             while service_control.sentinal:
                 # print(time.monotonic())
                 try:
@@ -255,10 +261,16 @@ class Packet_Submitter(object):
                     # wait for processed data from the packer service queue
                     data: Dict[str, Dict[str, Union[str, int]]
                                ] = service_control.in_channel.get()
-                    # await self._submitter.process(data)
+
+                    await logger.debug(f"Data: {data}\n")
+
+                    # add another corotine here that only adds packet async consumer
+                    # i.e here we produce data
+                    await self._submitter.process(data)
+
                     service_control.in_channel.task_done()
                     #print("packet parser time diff: ", time.monotonic()-s)
-                    service_control.stats["packets submitted"] += 1
+                    service_control.stats["packets_submitted"] += 1
                 except CancelledError as e:
                     # clear internal buffer
                     await logger.info("clearing internal buffer")

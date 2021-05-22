@@ -231,7 +231,7 @@ async def application(interface_name: Optional[str] = None, configuration_file: 
     await asyncio.sleep(0.1)
     if ps_service_control.error:
         print("error in packet submitter service thread")
-        services_manager.close_threads()
+        services_manager.stop_all_service()
         return EXIT_FAILURE
 
     # configure and packet parser service
@@ -248,7 +248,7 @@ async def application(interface_name: Optional[str] = None, configuration_file: 
     await asyncio.sleep(0.1)
     if pp_service_control.error:
         print("error in packet parser service thread")
-        services_manager.close_threads()
+        services_manager.stop_all_service()
         return EXIT_FAILURE
 
     # block until signal shutdown

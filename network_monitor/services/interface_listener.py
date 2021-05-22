@@ -141,7 +141,7 @@ class Interface_Listener(object):
                         self.BUFFER_SIZE)
                     # time the packed got sniffed
                     sniffed_timestamp: float = time.time()
-                    service_control.stats["packets sniffed"] += 1
+                    service_control.stats["packets_sniffed"] += 1
                     # add raw to be processed by other service
                     service_control.out_channel.put(
                         (sniffed_timestamp, packet)
