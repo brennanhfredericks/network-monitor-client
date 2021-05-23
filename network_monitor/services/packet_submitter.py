@@ -118,7 +118,7 @@ class Submitter(object):
                 # load local files clear them out
         else:
             # should never reach this state
-            self._logger.exception(
+            await self._logger.exception(
                 f"storage mode unknown: {self._storage_mode}"
             )
 
@@ -130,10 +130,10 @@ class Submitter(object):
             await self._storage_mode(data)
         except (aiohttp.ClientError,
                 aiohttp.http_exceptions.HttpProcessingError)as e:
-            self._logger.exception(f"remote storage exception: {e}")
-            self._change_storage_mode()
+            await self._logger.exception(f"remote storage exception: {e}")
+            await self._change_storage_mode()
         except Exception as e:
-            self._logger.exception(f"local store exception: {e}")
+            await self._logger.exception(f"local store exception: {e}")
             # create a new file for logging
             await self._configure_outfile()
 
@@ -189,10 +189,10 @@ class Submitter(object):
             except asyncio.CancelledError as e:
                 # cancel operation close out any open operation.
                 await self._close_mode()
-                self._logger.info(f"submitter process has been closed")
+                await self._logger.info(f"submitter process has been closed")
                 raise e
             else:
-                # self._storage(data)
+                await self._storage(data)
                 data_channel.task_done()
 
 
@@ -297,10 +297,9 @@ class Packet_Submitter(object):
                 service_control.stats["packets_submitted"] += 1
 
         # wait for queue to clear if there are still items available
-        print("data channel size: ", data_channel.qsize())
+
         await data_channel.join()
         # close process_task running in continuous True loop which raises Cancel error
         process_task.cancel()
 
         await asyncio.gather(process_task, return_exceptions=True)
-        # print(asyncio.all_tasks())
