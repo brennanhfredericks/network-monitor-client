@@ -132,6 +132,7 @@ class Submitter(object):
                 aiohttp.http_exceptions.HttpProcessingError)as e:
             await self._logger.exception(f"remote storage exception: {e}")
             await self._change_storage_mode()
+            await self._storage_mode(data)
         except Exception as e:
             await self._logger.exception(f"local store exception: {e}")
             # create a new file for logging
