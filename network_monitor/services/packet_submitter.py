@@ -10,7 +10,7 @@ import aiofiles.os
 import asyncio
 import concurrent.futures
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 
 
 from aiologger import Logger
@@ -35,43 +35,36 @@ class Submitter(object):
         self,
         url: str,
         log_dir: str,
-        max_buffer_size: int = 5,
         timeout: int = 300,
-        retryinterval: int = 300,
+        retryinterval: int = 600,
     ) -> None:
 
         self.url: str = url
         self.retryinterval: int = retryinterval
-        self.session_timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(
+
+        self._session_timeout: aiohttp.ClientTimeout = ClientTimeout(
             total=timeout)
 
+        self._session: Optional[ClientSession] = None
+        self._outfile: Optional[AsyncFileIO] = None
         self._logs_written: bool = False
 
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._data_channel: Optional[asyncio.Queue] = None
 
         self._logger: Optional[Logger] = None
-        self._checked_for_logs: Optional[float] = None
+        #self._checked_for_logs: Optional[float] = None
 
         # check
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-
             self._log_dir: str = log_dir
-            self._checked_for_logs = time.time()
+
+            #self._checked_for_logs = time.time()
         else:
             # check if files in directory. if files process and send to server
             self._log_dir = log_dir
             # check for existing logs when asynchronous loop is set
-
-        self.out_file: str = os.path.join(
-            log_dir, f"out_{int(time.time())}.lsp")
-
-        self.max_buffer_size: int = max_buffer_size
-        self._buffer: Dict[str, Dict[str, Union[str, int]]] = []
-
-    def output_filename(self) -> str:
-        return self.out_file
 
     async def set_logger(self, logger: Logger) -> None:
         self._logger = logger
@@ -79,139 +72,128 @@ class Submitter(object):
     async def set_async_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
 
-        # create task but don't await it until thread about to exit
-        # self._loop.create_task(self._clear_logs())
-        # self._checked_for_logs = time.time()
-
-    async def _post_to_server(self, data, session: ClientSession) -> None:
-        timeout = aiohttp.ClientTimeout(total=5)
-        # return context manager
-        resp = await session.post(self.url, json=data, timeout=timeout)
+    async def _remote_storage(self, data: Dict[str, Union[str, int]]):
+        resp = await self._session.post(self.url, json=data)
         # if fail raise ClientResponseError
         resp.raise_for_status()
 
-    async def _local_storage(self, data: Dict[str, Dict[str, Union[str, int]]], fout: AsyncFileIO) -> None:
-        await fout.write(json.dumps(data) + "\n")
+    async def _local_storage(self, data: Dict[str, Union[str, int]]):
+        await self._outfile.write(json.dumps(data) + "\n")
 
-        self._logs_written = True
+    async def _close_mode(self) -> None:
+        # when submitter is closed we know all is closed
 
-    def _logs_available(self) -> List[str]:
-        "os list dir"
-        res = [f for f in os.listdir(self._log_dir) if f.endswith(".lsp")]
-        return res
+        if self._session is not None:
+            await self._session.close()
+            self._session = None
 
-    async def _clear_logs(self) -> None:
-        """
-            check for existing logs and try post to server
-        """
+        if self._outfile is not None:
 
-        logs: List[str] = self._logs_available()
-        # maybe added functionality to post file
-        if logs:
-            # load from disk
+            # make sure the buffer is clear
+            await self._outfile.flush()
+            await self._outfile.close()
 
-            # open tcp session
-            async with ClientSession(timeout=self.session_timeout) as session:
-                # check if monitor server avalable
-                resp = await session.get(self.url)
+            self._outfile = None
 
-                if resp.status != 200:
-                    # server unavailable
-                    return
+    async def _change_storage_mode(self):
 
-                # iterate over all logs
-                for log in logs:
-                    infile = os.path.join(self._log_dir, log)
+        if self._storage_mode == self._remote_storage:
+            # close remote
+            await self._close_mode()
+            # create new output file
+            res = await self._configure_outfile()
+            # switch to local storage
+            if res:
+                self._storage_mode = self._local_storage
 
-                    try:
-                        async with aiofiles.open(infile, "r") as fin:
-                            tasks = []
-                            async for line in fin:
-                                data = json.loads(line)
-                                task = self._loop.create_task(
-                                    self._post_to_server(data, session)
-                                )
-                                tasks.append(task)
+        elif self._storage_mode == self._local_storage:
+            # switch to remote storage
+            await self._close_mode()
 
-                            await asyncio.gather(*tasks)
-                    except (
-                        aiohttp.ClientError,
-                        aiohttp.http_exceptions.HttpProcessingError,
-                    ) as e:
+            res = await self._configure_session()
 
-                        self._logger.warning(
-                            f"remote storage not available: {e}")
-                    except Exception as e:
-
-                        await self._logger.exception(f"exception occured when trying to clear logs: {e}")
-                    else:
-                        # only run when no exception occurs
-                        await aiofiles.os.remove(infile)
-
-    async def _post_or_disk(self, data: Dict[str, Dict[str, Union[str, int]]], session: ClientSession, fout: AsyncFileIO) -> None:
-
-        try:
-            # try to post data to the service
-            await self._post_to_server(data, session)
-        except (aiohttp.ClientError, aiohttp.http_exceptions.HttpProcessingError, asyncio.exceptions.TimeoutError) as e:
-            # server not available write data to file
-            await self._local_storage(data, fout)
-            # await self._logger.warning(f"something wrong with remote storage: {e}")
-        except Exception as e:
-            await self._logger.exception(f"exception occured when trying to switch between post_or_disk: {e}")
-
-    async def _process(self) -> None:
-        tasks: List[Task] = []
-
-        try:
-            async with ClientSession(timeout=self.session_timeout) as session:
-                async with aiofiles.open(self.out_file, "a") as fout:
-                    for data in self._buffer:
-                        data["Info"]["Submitter_Timestamp"] = time.time()
-                        task: Task = self._loop.create_task(
-                            self._post_or_disk(data, session, fout)
-                        )
-                        tasks.append(task)
-
-                    await asyncio.gather(*tasks)
-        except Exception as e:
-            await self._logger.exception(f"exception occured when trying to process internal buffer: {e}")
+            if res:
+                self._storage_mode = self._remote_storage
+                #
+                # load local files clear them out
         else:
-            # clear out internal buffer
-            self._buffer.clear()
+            # should never reach this state
+            self._logger.exception(
+                f"storage mode unknown: {self._storage_mode}"
+            )
 
-    async def flush(self):
-        if len(self._buffer) > 0:
-            await self._process()
+            self._storage_mode = self._remote_storage
 
-    # submit data to server asynchronously
+    async def _storage(self, data: Dict[str, Union[str, int]]):
+
+        try:
+            await self._storage_mode(data)
+        except (aiohttp.ClientError,
+                aiohttp.http_exceptions.HttpProcessingError)as e:
+            self._logger.exception(f"remote storage exception: {e}")
+            self._change_storage_mode()
+        except Exception as e:
+            self._logger.exception(f"local store exception: {e}")
+            # create a new file for logging
+            await self._configure_outfile()
+
+    async def _configure_outfile(self) -> bool:
+
+        outfile: str = os.path.join(
+            self._log_dir, f"{int(time.time())}.lsp"
+        )
+
+        try:
+            self._outfile = await aiofiles.open(outfile, "a")
+        except Exception as e:
+            self._logger.exception(f"Unable to create local storage file: {e}")
+            self._outfile = None
+            return False
+
+        return True
+
+    async def _configure_session(self) -> bool:
+
+        # need specify connection with the approriate header configuration
+
+        try:
+
+            self._session = ClientSession(timeout=self._session_timeout)
+            resp = await self._session.get(self.url, timeout=1)
+            assert resp.status == 200
+        except Exception as e:
+            self._logger.info(f"monitor server unavailable")
+            # free resources
+            await self._session.close()
+            self._session = None
+            return False
+
+        return True
+
     async def process(self, data_channel: asyncio.Queue) -> None:
+
+        # check if monitor server is available by call remote get()
+
+        res: bool = await self._configure_session()
+
+        # if server available call remote storage
+        if res:
+            self._storage_mode = self._remote_storage
+        else:
+            await self._configure_outfile()
+            self._storage_mode = self._local_storage
+
         while True:
             try:
                 data: Dict[str, Dict[str, Union[str, int]]] = await data_channel.get()
             except asyncio.CancelledError as e:
                 # cancel operation close out any open operation.
+                await self._close_mode()
                 self._logger.info(f"submitter process has been closed")
                 raise e
             else:
-                # mark task as completed
+                # self._storage(data)
                 data_channel.task_done()
-
-            # # add data to internal buffer
-            # self._buffer.append(data)
-            # time_now = time.time()
-            # await self._logger.debug("new data")
-            # # internal buffer
-            # if len(self._buffer) > self.max_buffer_size:
-            #     await self._logger.debug("processing internal buffer")
-            #     await self._process()
-            # elif (
-            #     time_now - self._checked_for_logs > self.retryinterval
-            # ) and self._logs_written:
-            #     await self._logger.debug("clearing local logs")
-            #     self._loop.create_task(self._clear_logs())
-
-            #     self._checked_for_logs = time.time()
 
 
 class Packet_Submitter(object):
@@ -315,9 +297,9 @@ class Packet_Submitter(object):
                 service_control.stats["packets_submitted"] += 1
 
         # wait for queue to clear if there are still items available
-        #print("internal queue size: ", data_channel.qsize())
+        print("data channel size: ", data_channel.qsize())
         await data_channel.join()
-        # close process task process_task.cancel()
+        # close process_task running in continuous True loop which raises Cancel error
         process_task.cancel()
 
         await asyncio.gather(process_task, return_exceptions=True)
