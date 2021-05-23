@@ -80,8 +80,8 @@ class Submitter(object):
         self._loop = loop
 
         # create task but don't await it until thread about to exit
-        self._loop.create_task(self._clear_logs())
-        self._checked_for_logs = time.time()
+        # self._loop.create_task(self._clear_logs())
+        # self._checked_for_logs = time.time()
 
     async def _post_to_server(self, data, session: ClientSession) -> None:
         timeout = aiohttp.ClientTimeout(total=5)
@@ -315,8 +315,10 @@ class Packet_Submitter(object):
                 service_control.stats["packets_submitted"] += 1
 
         # wait for queue to clear if there are still items available
+        #print("internal queue size: ", data_channel.qsize())
         await data_channel.join()
         # close process task process_task.cancel()
+        process_task.cancel()
 
         await asyncio.gather(process_task, return_exceptions=True)
         # print(asyncio.all_tasks())
