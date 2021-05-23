@@ -8,7 +8,7 @@ import aiohttp
 import aiofiles
 import aiofiles.os
 import asyncio
-
+import concurrent.futures
 
 from aiohttp import ClientSession
 
@@ -22,8 +22,6 @@ from asyncio import Task, CancelledError
 import queue
 from aiofiles.threadpool import AsyncFileIO
 
-from network_monitor.filters import flatten_protocols
-from network_monitor.protocols import EnhancedJSONEncoder
 
 from .service_manager import Service_Control
 
@@ -76,7 +74,8 @@ class Submitter(object):
 
     async def set_async_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        await self._logger.debug("Submitter injecting asynchronous loop")
+
+        # create task but don't await it until thread about to exit
         self._loop.create_task(self._clear_logs())
         self._checked_for_logs = time.time()
 
@@ -225,11 +224,18 @@ class Packet_Submitter(object):
         return self._submitter.output_filename()
 
     async def worker(self, service_control: Service_Control) -> None:
+
+        # loop timeout to stop checking for data when queue is empty
+        loop_timeout: float = 0.5
+
         # retrieve running loop
         loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
 
         # could be used to inject other asynchronouse task
         service_control.loop = loop
+
+        # configure asynchronous loop to add other task such as clearing old logs
+        await self._submitter.set_async_loop(loop)
 
         logger = Logger(name=__name__, level=LogLevel.INFO)
 
@@ -241,48 +247,54 @@ class Packet_Submitter(object):
         logger.add_handler(stream_handler)
 
         try:
-
+            # could fail due to permission issue
             file_handler = AsyncFileHandler(
                 os.path.join(self.log_directory, "packet_submitter.log")
             )
-            logger.add_handler(file_handler)
 
         except Exception as e:
-            await logger.exception("error creating AsycFileHandler: {e}")
-            service_control.error = True
-        else:
 
+            await logger.exception("error creating AsycFileHandler: {e}")
+            # inform main async loop that this thread errored out
+            service_control.error = True
+
+            # exit worker coroutine and allow thread exit normally
+            return
+        else:
+            logger.add_handler(file_handler)
             # configure submitter logger
             await self._submitter.set_logger(logger)
 
-            # configure asynchronous loop to add other task such as clearing old logs
-            await self._submitter.set_async_loop(loop)
+        while service_control.sentinal:
+            # print(time.monotonic())
+            try:
+                # s = time.monotonic()
 
-            while service_control.sentinal:
-                # print(time.monotonic())
-                try:
-                    #s = time.monotonic()
-                    # wait for processed data from the packer service queue
-                    data: Dict[str, Dict[str, Union[str, int]]
-                               ] = service_control.in_channel.get(timeout=1)
+                # wait for processed data from the packer service queue
+                data: Dict[str, Dict[str, Union[str, int]]
+                           ] = service_control.in_channel.get_nowait()
 
-                    await logger.debug(f"Data: {data}\n")
+                await logger.debug(f"Data: {data}\n")
 
-                    # add another corotine here that only adds packet async consumer
-                    # i.e here we produce data
-                    await self._submitter.process(data)
+                # add another corotine here that only adds packet async consumer
+                # i.e here we produce data
+                await self._submitter.process(data)
 
-                    service_control.in_channel.task_done()
-                    #print("packet parser time diff: ", time.monotonic()-s)
-                    service_control.stats["packets_submitted"] += 1
-                except queue.Empty:
-                    pass
-                except CancelledError as e:
-                    # clear internal buffer
-                    await logger.info("clearing internal buffer")
-                    await self._submitter.flush()
-                    raise e
-                except Exception as e:
-                    await logger.exception(f"An error occured in packet submitter service {e}")
+                service_control.in_channel.task_done()
+                # print("packet parser time diff: ", time.monotonic()-s)
+                service_control.stats["packets_submitted"] += 1
+
+            except queue.Empty:
+                # queue empty, timeout before checking again
+                await asyncio.sleep(loop_timeout)
+
+            except CancelledError as e:
+                # clear internal buffer
+                await logger.info("clearing internal buffer")
+                await self._submitter.flush()
+                raise e
+
+            except Exception as e:
+                await logger.exception(f"An error occured in packet submitter service {e}")
 
         print(asyncio.all_tasks())
