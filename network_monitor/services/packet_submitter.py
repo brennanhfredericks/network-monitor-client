@@ -193,6 +193,7 @@ class Submitter(object):
                 await self._logger.info(f"submitter process has been closed")
                 raise e
             else:
+                data["Info"]["Submitted_Timestamp"] = time.time()
                 await self._storage(data)
                 data_channel.task_done()
 
