@@ -44,8 +44,12 @@ class Submitter(object):
         self.retryinterval: int = retryinterval
         self.session_timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(
             total=timeout)
+
         self._logs_written: bool = False
+
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._data_channel: Optional[asyncio.Queue] = None
+
         self._logger: Optional[Logger] = None
         self._checked_for_logs: Optional[float] = None
 
@@ -181,23 +185,33 @@ class Submitter(object):
             await self._process()
 
     # submit data to server asynchronously
-    async def process(self, data: Dict[str, Dict[str, Union[str, int]]]) -> None:
+    async def process(self, data_channel: asyncio.Queue) -> None:
+        while True:
+            try:
+                data: Dict[str, Dict[str, Union[str, int]]] = await data_channel.get()
+            except asyncio.CancelledError as e:
+                # cancel operation close out any open operation.
+                self._logger.info(f"submitter process has been closed")
+                raise e
+            else:
+                # mark task as completed
+                data_channel.task_done()
 
-        # add data to internal buffer
-        self._buffer.append(data)
-        time_now = time.time()
-        await self._logger.debug("new data")
-        # internal buffer
-        if len(self._buffer) > self.max_buffer_size:
-            await self._logger.debug("processing internal buffer")
-            await self._process()
-        elif (
-            time_now - self._checked_for_logs > self.retryinterval
-        ) and self._logs_written:
-            await self._logger.debug("clearing local logs")
-            self._loop.create_task(self._clear_logs())
+            # # add data to internal buffer
+            # self._buffer.append(data)
+            # time_now = time.time()
+            # await self._logger.debug("new data")
+            # # internal buffer
+            # if len(self._buffer) > self.max_buffer_size:
+            #     await self._logger.debug("processing internal buffer")
+            #     await self._process()
+            # elif (
+            #     time_now - self._checked_for_logs > self.retryinterval
+            # ) and self._logs_written:
+            #     await self._logger.debug("clearing local logs")
+            #     self._loop.create_task(self._clear_logs())
 
-            self._checked_for_logs = time.time()
+            #     self._checked_for_logs = time.time()
 
 
 class Packet_Submitter(object):
@@ -265,36 +279,44 @@ class Packet_Submitter(object):
             # configure submitter logger
             await self._submitter.set_logger(logger)
 
+        # internal create coroutine process task
+        data_channel: asyncio.Queue = asyncio.Queue()
+
+        process_task = loop.create_task(
+
+            self._submitter.process(data_channel), name="process")
+
         while service_control.sentinal:
-            # print(time.monotonic())
+
             try:
-                # s = time.monotonic()
 
                 # wait for processed data from the packer service queue
                 data: Dict[str, Dict[str, Union[str, int]]
                            ] = service_control.in_channel.get_nowait()
-
-                await logger.debug(f"Data: {data}\n")
-
-                # add another corotine here that only adds packet async consumer
-                # i.e here we produce data
-                await self._submitter.process(data)
-
-                service_control.in_channel.task_done()
-                # print("packet parser time diff: ", time.monotonic()-s)
-                service_control.stats["packets_submitted"] += 1
-
             except queue.Empty:
                 # queue empty, timeout before checking again
                 await asyncio.sleep(loop_timeout)
 
             except CancelledError as e:
-                # clear internal buffer
-                await logger.info("clearing internal buffer")
-                await self._submitter.flush()
+                # coroutine function cancelled
                 raise e
 
             except Exception as e:
                 await logger.exception(f"An error occured in packet submitter service {e}")
 
-        print(asyncio.all_tasks())
+            else:
+                # add data to submitter queue with out blocking. queue is growable
+                await data_channel.put(data)
+
+                # inform queue task has been completed
+                service_control.in_channel.task_done()
+
+                # status updated
+                service_control.stats["packets_submitted"] += 1
+
+        # wait for queue to clear if there are still items available
+        await data_channel.join()
+        # close process task process_task.cancel()
+
+        await asyncio.gather(process_task, return_exceptions=True)
+        # print(asyncio.all_tasks())
