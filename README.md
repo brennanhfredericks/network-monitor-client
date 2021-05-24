@@ -11,20 +11,18 @@
     - opens a low level socket on a network interface controller and captures all ethernet packets processed by the controller. This operation requires super user privileges. 
   - packet parser
     - processes all captured packets into protocol objects contatining the metadata
-      - only support protocols listed below
-      - and protocols where the implementation are available
+      - supported protocols listed below
     - packet filter
       - filters captured packets based on user defined filters
-        - filters are protocol name and protocol atrributes key value pairs
+        - filters are defined using nested key value pairs. The protocol names, protocol atrributes and attributes values are the key value pairs
   - packet submitter
     - sends captured packets metadata to network monitor server
     - if network monitor server not available, stores processed data locally 
-
 ---
 
 ## basic usage:
 
-- only test on unix system
+- Unix system
 
 ### command line:
   - list availiable network interfaces
@@ -46,18 +44,18 @@
       ```json 
       {
         "IPv4":{
-          "source_address":"127.0.0.1",
-          "destination_address":"127.0.0.1"
+          "Source_Address":"127.0.0.1",
+          "Destination_Address":"127.0.0.1"
         },
         "TCP":{
-          "destination_port":5000,
+          "Destination_Port":5000,
         }
       }
       ```
     - filter all packets captured on the `lo` interface that contain the `IPv4` protocol
       ```json 
       {
-        "AF_Packet":{"ifname":"lo"},
+        "AF_Packet":{"Interface_Name":"lo"},
         "IPv4":{}
       }
       ```
@@ -66,22 +64,19 @@
 
 ### todo:
 
+- [] Filter Selection Behaviour
+  - [] by default filter any data generete between the application and the monitor server. 
 
-#### high priority
-  - Application terminated by Kernel, out of memory due to queue not being cleared.
-    - []  rewrite startup code to use two threads. interface_listener_service blocking. (how to create asycio low level socket connection?)
-    - [] move from init to network.py 
-  - Implement flag to filter all traffic generate by application from being send to network monitor server
+- [x] Only parser traffic on the interface specified by the user. if a computer a has multiple virtual interfaces that use the (physical) interface specified by the user. The captured data also contains data from the virtual interfaces (docker, tunnels etc).  
 
-#### medium priority
-  - Implement flag to verbose output of application, remove print functions and replace with stdout and stderr pipes
-  
-#### low priority
-  - 802.2 Packet
-    - Other Individual LSAP address parsers (`IEEE 802.1 Bridge Spanning Tree Protocol`, `ARPANET Address Resolution Protocol (ARP)` etc)
-  - IPv6 extension headers
+- [] When monitor server is available clear any locally stored data. create a asynchronous task that loads and pushes local data into data_channel. update timestamp?
+  clear data from disk if it has been added to the queue. 
+- [] If server is unavailable spawn an asynchronous task (prediocally based on retryinterval) to check if server is available. when available change storage submmission from `local` to `remote` and clear locally stored data
+- [] 802.2 Packet
+  - Other Individual LSAP address parsers (`IEEE 802.1 Bridge Spanning Tree Protocol`, `ARPANET Address Resolution Protocol (ARP)` etc)
+- [] IPv6 extension headers
     - Implement parsers to extract information from extension headers (`Routing`,`Fragment`,`Authentication Header` etc) 
-  - Checksum verifier - requires 1's complement in verification algorithm
+- [] Checksum verifier - requires 1's complement in verification algorithm
     - `IPV4`
     - `IPv6`
     - `ICMP`
@@ -90,6 +85,18 @@
     - `TCP`
     - `UDP`
 
+- [] Remove multiple threads and multiple asynchronous loops not need. Found root cause of exponetial growth queue issue. Make application fully asynchronous with the listener service running in a executer (raw non blocking sockets?). Current implementation
+  - Main asynchronous loop application which spawn three threads
+    - 1: Interface Listener Service (Synchronous loop):
+      - blocking raw socket that push the binary data into queue for processing by another service
+    - 2: Packet Parser Service (Asynchronous loop)
+      - parsers and filters packets
+    - 3: Packet Submitter Service (Asynchronous loop)
+      - write processed data to local storage or remote storage
+  - Application terminates using SIGINT, SIGTSTP and wait for all queue to process before gracefully shutting down spawned threads and main asynchronous loop
+- [] Only await for asynchronous storage task at the end of thread or when storage mode changes . use introspection to retrieve asynchronous loop tasks). await causes a bottleneck when remote storage mode is activated. Could also be the coupling between database and api
+- [] Implement TCP,UDP stream tracker (partial implementation in notebook)
+- [] Rewrite and expand test cases  
 ---
 
 ### implemented
@@ -109,12 +116,13 @@
   - 802.2 LLC PDU
   	- 170: SNAP Extension Used
 
+  - Asynchronous stream and file logging
+  - Asynchronous status update
+  - Asynchronous shutdown 
+# Development Setup Issues 
+  - If the client application and network monitor server traffic passes through the same intefaces () the client will reprocess the traffic generated by the application as new network which will result in a Out of memory issue an application being killed by OS.
 
-# Development Setup 
-- Networking stack and docker issues, ip address are also chaning with start up
+  - solution filter traffic at port and ip address level
 
-### changes
 
-#### 2021/05/17
-- changed application from threaded to asynchronous
-- added asynchronous logger, only logs to stderr and stdout
+
