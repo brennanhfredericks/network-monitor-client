@@ -202,7 +202,7 @@ class Submitter(object):
 
                 await self._storage(data)
 
-                await self._logger.info(f"size: {data_channel.qsize()}")
+                # await self._logger.info(f"size: {data_channel.qsize()}")
                 data_channel.task_done()
 
 

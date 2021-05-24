@@ -108,7 +108,11 @@
   	- 58: Internet Control Message Protocol for IPv6 (ICMPv6)
   - 802.2 LLC PDU
   	- 170: SNAP Extension Used
-	   
+
+
+# Development Setup 
+- Networking stack and docker issues, ip address are also chaning with start up
+
 ### changes
 
 #### 2021/05/17
