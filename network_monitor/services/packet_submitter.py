@@ -8,7 +8,8 @@ import aiohttp
 import aiofiles
 import aiofiles.os
 import asyncio
-import concurrent.futures
+from enum import Enum
+import functools
 
 from aiohttp import ClientSession, ClientTimeout
 
@@ -73,7 +74,9 @@ class Submitter(object):
         self._loop = loop
 
     async def _remote_storage(self, data: Dict[str, Union[str, int]]):
-        resp = await self._session.post(self.url, json=data)
+
+        resp = await self._session.post(self.url, json=data, timeout=1)
+
         # if fail raise ClientResponseError
         resp.raise_for_status()
 
@@ -127,7 +130,9 @@ class Submitter(object):
     async def _storage(self, data: Dict[str, Union[str, int]]):
 
         try:
+
             await self._storage_mode(data)
+
         except (aiohttp.ClientError,
                 aiohttp.http_exceptions.HttpProcessingError)as e:
             await self._logger.exception(f"remote storage exception: {e}")
@@ -194,7 +199,10 @@ class Submitter(object):
                 raise e
             else:
                 data["Info"]["Submitted_Timestamp"] = time.time()
+
                 await self._storage(data)
+
+                await self._logger.info(f"size: {data_channel.qsize()}")
                 data_channel.task_done()
 
 
